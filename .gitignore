@@ -6,3 +6,5 @@ dataset/*
 models/*
 wandb/*
 logging/*
+__pycache__
+hpc_job.sh

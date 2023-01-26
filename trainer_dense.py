@@ -262,7 +262,7 @@ for index in range(total_epoch):
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
-    wandb.log({'metrc':metrc, 'train_loss': train_metric.metric, 'test_loss': test_metric.metric, 'epoch': index})
+    wandb.log({'metrc':metrc, 'epoch': index})
 
     if opt.weight == 'autol':
         meta_weight_ls[index] = autol.meta_weights.detach().cpu()
