@@ -187,6 +187,7 @@ class TaskMetric:
 
             metric_str += ' {} {:.4f} {:.4f}'\
                 .format(task_id.capitalize(), self.metric[task_id][e, 0], self.metric[task_id][e, 1])
+            metric_float = self.metric[task_id][e, 1]
 
         if self.include_mtl:
             # Pre-computed single task learning performance using trainer_dense_single.py
@@ -209,7 +210,8 @@ class TaskMetric:
 
             self.metric['all'][e] = delta_mtl / len(stl)
             metric_str += ' | All {:.4f}'.format(self.metric['all'][e])
-        return metric_str
+            metric_float = self.metric['all'][e]
+        return metric_str,metric_float
 
     def get_best_performance(self, task):
         e = self.epoch_counter

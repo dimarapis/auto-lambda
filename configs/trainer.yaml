@@ -1,0 +1,5 @@
+
+wandb:
+  t_logger: True
+  project_name: Autolambda
+  entity: wandbdimar
