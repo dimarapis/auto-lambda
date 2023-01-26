@@ -8,6 +8,14 @@ from create_network import *
 from create_dataset import *
 from utils import *
 
+#Mine
+from extra.autolambda_code import SimWarehouse
+from omegaconf import OmegaConf
+from tqdm import tqdm
+import warnings
+import wandb
+warnings.filterwarnings("ignore")
+
 parser = argparse.ArgumentParser(description='Multi-task/Auxiliary Learning: Dense Prediction Tasks')
 parser.add_argument('--mode', default='none', type=str)
 parser.add_argument('--port', default='none', type=str)
@@ -23,7 +31,22 @@ parser.add_argument('--task', default='all', type=str, help='primary tasks, use 
 parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, cityscapes')
 parser.add_argument('--seed', default=0, type=int, help='random seed ID')
 
+
+parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
+parser.add_argument('--wandbprojectname', default='Autolambda', type=str, help='c')
+parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
+
 opt = parser.parse_args()
+option_dict = vars(opt)
+print(option_dict)
+#Initialize weights and biases logger
+if opt.wandbtlogger:
+    print("Started logging in wandb")
+    #wandb_config = OmegaConf.to_container(option_dict, resolve=True, throw_on_missing=True)
+    wandb_config = option_dict
+    wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
+        name='{}_{}_{}_{}'.format(opt.dataset,opt.task,opt.weight,opt.network),
+        config = wandb_config)
 
 torch.manual_seed(opt.seed)
 np.random.seed(opt.seed)
@@ -81,7 +104,7 @@ if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
     test_set = NYUv2(root=dataset_path, train=False)
-    batch_size = 4
+    batch_size = 16
 
 elif opt.dataset == 'cityscapes':
     dataset_path = 'dataset/cityscapes'
@@ -145,7 +168,7 @@ for index in range(total_epoch):
     if opt.weight == 'autol':
         val_dataset = iter(val_loader)
 
-    for k in range(train_batch):
+    for k in tqdm(range(train_batch)):
         train_data, train_target = train_dataset.next()
         train_data = train_data.to(device)
         train_target = {task_id: train_target[task_id].to(device) for task_id in train_tasks.keys()}
@@ -231,13 +254,15 @@ for index in range(total_epoch):
 
             test_metric.update_metric(test_pred, test_target, test_loss)
 
-    test_str = test_metric.compute_metric()
+    test_str,metrc = test_metric.compute_metric()
+    #print('metrbef', metrc)
     test_metric.reset()
 
     scheduler.step()
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
+    wandb.log({'metrc':metrc, 'train_loss': train_metric.metric, 'test_loss': test_metric.metric, 'epoch': index})
 
     if opt.weight == 'autol':
         meta_weight_ls[index] = autol.meta_weights.detach().cpu()

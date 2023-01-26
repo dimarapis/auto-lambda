@@ -2,5 +2,7 @@
 .DS_Store
 __pycache__/*
 panoptic_parts/
-dataset/sim_warehouse/*
-dataset/
+dataset/*
+models/*
+wandb/*
+logging/*

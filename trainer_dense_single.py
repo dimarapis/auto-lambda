@@ -7,7 +7,11 @@ from utils import *
 
 #Mine
 from extra.autolambda_code import SimWarehouse
-
+from tqdm import tqdm
+from omegaconf import OmegaConf
+import wandb
+import warnings
+warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description='Single-task Learning: Dense Prediction Tasks')
 parser.add_argument('--mode', default='none', type=str)
@@ -19,7 +23,21 @@ parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, citysca
 parser.add_argument('--task', default='seg', type=str, help='choose task for single task learning')
 parser.add_argument('--seed', default=0, type=int, help='gpu ID')
 
+parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
+parser.add_argument('--wandbprojectname', default='Autolambda', type=str, help='c')
+parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
+
+
+
 opt = parser.parse_args()
+
+#Initialize weights and biases logger
+if opt.wandbtlogger:
+    print("Started logging in wandb")
+    wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
+    wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
+        name='{}_{}'.format(opt.dataset,opt.task),
+        config = wandb_config)
 
 torch.manual_seed(opt.seed)
 np.random.seed(opt.seed)
@@ -58,7 +76,7 @@ if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
     test_set = NYUv2(root=dataset_path, train=False)
-    batch_size = 4
+    batch_size = 32
 
 elif opt.dataset == 'cityscapes':
     dataset_path = 'dataset/cityscapes'
@@ -97,9 +115,9 @@ for index in range(total_epoch):
     # evaluating train data
     model.train()
     train_dataset = iter(train_loader)
-    for k in range(train_batch):
+
+    for k in tqdm(range(train_batch)):
         train_data, train_target = train_dataset.next()
-        print(train_target.keys())
         train_data = train_data.to(device)
         train_target = {task_id: train_target[task_id].to(device) for task_id in train_tasks.keys()}
         train_pred = model(train_data)
