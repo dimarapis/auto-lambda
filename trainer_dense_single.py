@@ -1,11 +1,13 @@
 import argparse
-
 import torch.optim as optim
 import torch.utils.data.sampler as sampler
-
 from create_network import *
 from create_dataset import *
 from utils import *
+
+#Mine
+from extra.autolambda_code import SimWarehouse
+
 
 parser = argparse.ArgumentParser(description='Single-task Learning: Dense Prediction Tasks')
 parser.add_argument('--mode', default='none', type=str)
@@ -45,6 +47,13 @@ optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=1e-4, momentum=0.
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 
 # define dataset
+if opt.dataset == 'mini_nyuv2':
+    dataset_path = 'dataset/mini_nyuv2'
+    train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
+    test_set = NYUv2(root=dataset_path, train=False)
+    batch_size = 4
+
+# define dataset
 if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
@@ -55,6 +64,12 @@ elif opt.dataset == 'cityscapes':
     dataset_path = 'dataset/cityscapes'
     train_set = CityScapes(root=dataset_path, train=True, augmentation=True)
     test_set = CityScapes(root=dataset_path, train=False)
+    batch_size = 4
+
+elif opt.dataset == 'warehouse_sim':
+    dataset_path = 'dataset/sim_warehouse'
+    train_set = SimWarehouse(root=dataset_path, train=True, augmentation=True)
+    test_set = SimWarehouse(root=dataset_path, train=False)
     batch_size = 4
 
 train_loader = torch.utils.data.DataLoader(
@@ -84,13 +99,14 @@ for index in range(total_epoch):
     train_dataset = iter(train_loader)
     for k in range(train_batch):
         train_data, train_target = train_dataset.next()
+        print(train_target.keys())
         train_data = train_data.to(device)
         train_target = {task_id: train_target[task_id].to(device) for task_id in train_tasks.keys()}
-
         train_pred = model(train_data)
         optimizer.zero_grad()
 
         train_loss = [compute_loss(train_pred[i], train_target[task_id], task_id) for i, task_id in enumerate(train_tasks)]
+
         train_loss[0].backward()
         optimizer.step()
 

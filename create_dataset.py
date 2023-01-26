@@ -5,7 +5,7 @@ import torch
 import fnmatch
 
 import numpy as np
-import panoptic_parts as pp
+#import panoptic_parts as pp
 import torch.utils.data as data
 import matplotlib.pylab as plt
 import torchvision.transforms as transforms
