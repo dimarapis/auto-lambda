@@ -36,6 +36,7 @@ parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb o
 parser.add_argument('--wandbprojectname', default='Autolambda', type=str, help='c')
 parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
 
+
 opt = parser.parse_args()
 option_dict = vars(opt)
 print(option_dict)
@@ -104,7 +105,7 @@ if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
     test_set = NYUv2(root=dataset_path, train=False)
-    batch_size = 32
+    batch_size = 4
 
 elif opt.dataset == 'cityscapes':
     dataset_path = 'dataset/cityscapes'

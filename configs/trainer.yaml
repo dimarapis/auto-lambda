@@ -1,5 +1,39 @@
+mtl:
+  mode: null
+  port: null
+
+data:
+  path: dataset
+  dataset: sim_warehouse
+  with_noise: False #False,True
+
+network:
+  network: split #split,mtan
+  weight: equal #equal,dwa,uncert,autol
+  task: all #primtasks
+  grad_method: null #graddrop,pcgrad,cagrad
+  autol_init: 0.1
+  autol_lr: 0.0001
+  
+
+training:
+  gpu: 0
+  optim_lr: 0.1
+  optim: sgd #sgd,adam
+  weight_decay: 0.0001
+  early_stop: False
+  scheduler: multisteplr #multisteplr, cosineannealing, steplr
+
+
+reprod:
+  t_seed: True
+  o_seed: 0
 
 wandb:
-  t_logger: True
+  t_logger: False
   project_name: Autolambda
   entity: wandbdimar
+
+sweep: 
+  sweep_t: False
+  sweep_o: 'configs/sweep_config.yaml'
