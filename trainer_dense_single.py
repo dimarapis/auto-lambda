@@ -111,7 +111,7 @@ for index in range(total_epoch):
     train_dataset = iter(train_loader)
 
     for k in tqdm(range(train_batch)):
-        train_data, train_target = train_dataset.next()
+        train_data, train_target = next(iter(train_dataset))
         train_data = train_data.to(device)
         train_target = {task_id: train_target[task_id].to(device) for task_id in train_tasks.keys()}
         train_pred = model(train_data)
@@ -132,7 +132,7 @@ for index in range(total_epoch):
     with torch.no_grad():
         test_dataset = iter(test_loader)
         for k in range(test_batch):
-            test_data, test_target = test_dataset.next()
+            test_data, test_target = next(iter(test_dataset))
             test_data = test_data.to(device)
             test_target = {task_id: test_target[task_id].to(device) for task_id in train_tasks.keys()}
 
