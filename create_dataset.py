@@ -80,7 +80,78 @@ class DataTransform(object):
                 data_dict[task] = data_dict[task].squeeze(0)
         return data_dict
 
+class SimWarehouse(data.Dataset):
+    """
+    NYUv2 dataset, 3 tasks + 1 generated useless task
+    Included tasks:
+        1. Semantic Segmentation,
+        2. Depth prediction,
+        3. Surface Normal prediction,
+        4. Noise prediction [to test auxiliary learning, purely conflict gradients]
+    """
+    
+    def resize_transform(self, image, size=(360,640)):
+        image = transforms.Resize(size)(image)
+        #label = transforms.Resize(size, interpolation=Image.NEAREST)(label)
+        return image
+    
+    def __init__(self, root, train=True, augmentation=False):
+        
+        seed = 29
+        np.random.seed(seed)
+        random.seed(seed)
+        torch.manual_seed(seed)
+        torch.cuda.manual_seed(seed)
+        # When running on the CuDNN backend, two further options must be set
+        torch.backends.cudnn.deterministic = True
+        torch.backends.cudnn.benchmark = False
 
+        self.train = train
+        self.root = os.path.expanduser(root)
+        self.augmentation = augmentation
+
+        # read the data file
+        if train:
+            self.data_path = root + '/train'
+        else:
+            self.data_path = root + '/val'
+
+        # calculate data length
+        self.data_len = len(fnmatch.filter(os.listdir(self.data_path + '/image'), '*.npy'))
+        self.noise = torch.rand(self.data_len, 1, 288, 384)
+
+    def __getitem__(self, index):
+        # load data from the pre-processed npy files
+        image = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/image/{:d}.npy'.format(index)), -1, 0)).float()
+        semantic = torch.from_numpy(np.load(self.data_path + '/label/{:d}.npy'.format(index)).astype(np.int32)).long()
+        depth = torch.from_numpy(np.load(self.data_path + '/depth/{:d}.npy'.format(index))).float()  / 1000.0
+        normal = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/normal/{:d}.npy'.format(index)), -1, 0)).float()
+        noise = self.noise[index].float()
+        # Reshape the data, remove 4th channel
+        image = image[:3, :, :]
+        # Add depth channel
+        depth = depth.unsqueeze(0)
+        #semantic_resized = semantic.unsqueeze(0)
+        #print(semantic_resized.shape)
+        #print(semantic.unsqueeze(0).shape)
+        semantic_resized = transforms.Resize((360,640))(semantic.unsqueeze(0)).squeeze(0)
+        #semantic_resized = #torch.nn.functional.interpolate(semantic, size=(360,640), mode='interpolate', align_corners=True)
+        #print(image.shape, semantic_resized.shape, depth.shape, normal.shape, noise.shape)
+        #print(semantic_resized.max(), semantic_resized.min())
+        
+        
+        data_dict = {'im': image, 'seg': semantic_resized, 'depth': depth, 'normal': normal, 'noise': noise}
+
+        # apply data augmentation if required
+        if self.augmentation:
+            data_dict = DataTransform(crop_size=[288, 384], scales=[1.0, 1.2, 1.5])(data_dict)
+
+        im = 2. * data_dict.pop('im') - 1.  # normalised to [-1, 1]
+        return im, data_dict
+
+    def __len__(self):
+        return self.data_len
+    
 class NYUv2(data.Dataset):
     """
     NYUv2 dataset, 3 tasks + 1 generated useless task
@@ -124,6 +195,7 @@ class NYUv2(data.Dataset):
         noise = self.noise[index].float()
 
         data_dict = {'im': image, 'seg': semantic, 'depth': depth, 'normal': normal, 'noise': noise}
+        #print(image.shape, semantic.shape, depth.shape, normal.shape, noise.shape)
 
         # apply data augmentation if required
         if self.augmentation:
@@ -289,3 +361,9 @@ class CIFAR100MTL(CIFAR100):
         self.subset_class = list(self.class_dict.keys())[subset_id]
         self.classes = self.class_dict[self.subset_class]
 
+#ADD 
+elif opt.dataset == 'cityscapes':
+    dataset_path = 'dataset/cityscapes'
+    train_set = CityScapes(root=dataset_path, train=True, augmentation=True)
+    test_set = CityScapes(root=dataset_path, train=False)
+    batch_size = 4

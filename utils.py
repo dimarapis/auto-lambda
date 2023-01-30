@@ -44,6 +44,7 @@ def create_task_flags(task, dataset, with_noise=False):
     """
     nyu_tasks = {'seg': 13, 'depth': 1, 'normal': 3}
     cityscapes_tasks = {'seg': 19, 'part_seg': 10, 'disp': 1}
+    sim_warehouse_tasks = {'seg': 23, 'depth': 3, 'normal': 1}
 
     tasks = {}
     if task != 'all':
@@ -51,11 +52,15 @@ def create_task_flags(task, dataset, with_noise=False):
             tasks[task] = nyu_tasks[task]
         elif dataset == 'cityscapes':
             tasks[task] = cityscapes_tasks[task]
+        elif dataset == 'sim_warehouse':
+            tasks[task] = sim_warehouse_tasks[task]
     else:
         if dataset == 'nyuv2':
             tasks = nyu_tasks
         elif dataset == 'cityscapes':
             tasks = cityscapes_tasks
+        elif dataset == 'sim_warehouse':
+            tasks = sim_warehouse_tasks
 
     if with_noise:
         tasks['noise'] = 1
@@ -200,7 +205,9 @@ class TaskMetric:
                        'class_5': 0.8872, 'class_6': 0.8475, 'class_7': 0.8588, 'class_8': 0.8707, 'class_9': 0.9015,
                        'class_10': 0.8976, 'class_11': 0.8488, 'class_12': 0.9033, 'class_13': 0.8441, 'class_14': 0.5537,
                        'class_15': 0.7584, 'class_16': 0.7279, 'class_17': 0.7537, 'class_18': 0.9148, 'class_19': 0.9469}
-
+            elif self.dataset == 'sim_warehouse': 
+                stl = {'seg': 0.4337, 'depth': 0.5224, 'normal': 22.40}
+                
             delta_mtl = 0
             for task_id in self.train_tasks:
                 if task_id in ['seg', 'part_seg'] or 'class' in task_id:  # higher better
