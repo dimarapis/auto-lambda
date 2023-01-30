@@ -268,7 +268,7 @@ for index in range(total_epoch):
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
-    wandb.log({'train_metrc': train_metrc, 'metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
+    wandb.log({'train_metrc': train_metrc, 'test_metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
