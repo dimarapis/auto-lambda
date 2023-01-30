@@ -124,7 +124,7 @@ for index in range(total_epoch):
 
         train_metric.update_metric(train_pred, train_target, train_loss)
 
-    train_str = train_metric.compute_metric()
+    train_str,train_metrc = train_metric.compute_metric()
     train_metric.reset()
 
     # evaluating test data
@@ -149,7 +149,7 @@ for index in range(total_epoch):
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
     
-    wandb.log({'metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
+    wandb.log({'train_metrc': train_metrc, 'metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     task_dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric}
     np.save('logging/stl_{}_{}_{}_{}.npy'.format(opt.network, opt.dataset, opt.task, opt.seed), task_dict)

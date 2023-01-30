@@ -206,7 +206,7 @@ class TaskMetric:
                        'class_10': 0.8976, 'class_11': 0.8488, 'class_12': 0.9033, 'class_13': 0.8441, 'class_14': 0.5537,
                        'class_15': 0.7584, 'class_16': 0.7279, 'class_17': 0.7537, 'class_18': 0.9148, 'class_19': 0.9469}
             elif self.dataset == 'sim_warehouse': 
-                stl = {'seg': 0.4337, 'depth': 0.5224, 'normal': 22.40}
+                stl = {'seg': 0.4337, 'depth': 0.2089, 'normal': 22.40}
                 
             delta_mtl = 0
             for task_id in self.train_tasks:
