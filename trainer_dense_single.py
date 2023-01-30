@@ -70,7 +70,7 @@ if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
     test_set = NYUv2(root=dataset_path, train=False)
-    batch_size = 32
+    batch_size = 4
 
 elif opt.dataset == 'cityscapes':
     dataset_path = 'dataset/cityscapes'
