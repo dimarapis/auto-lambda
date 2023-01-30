@@ -360,10 +360,3 @@ class CIFAR100MTL(CIFAR100):
 
         self.subset_class = list(self.class_dict.keys())[subset_id]
         self.classes = self.class_dict[self.subset_class]
-
-#ADD 
-elif opt.dataset == 'cityscapes':
-    dataset_path = 'dataset/cityscapes'
-    train_set = CityScapes(root=dataset_path, train=True, augmentation=True)
-    test_set = CityScapes(root=dataset_path, train=False)
-    batch_size = 4

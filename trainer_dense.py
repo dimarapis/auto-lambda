@@ -9,7 +9,6 @@ from create_dataset import *
 from utils import *
 
 #Mine
-from extra.autolambda_code import SimWarehouse
 from omegaconf import OmegaConf
 from tqdm import tqdm
 import warnings
@@ -112,7 +111,13 @@ elif opt.dataset == 'cityscapes':
     train_set = CityScapes(root=dataset_path, train=True, augmentation=True)
     test_set = CityScapes(root=dataset_path, train=False)
     batch_size = 4
-
+ 
+elif opt.dataset == 'sim_warehouse':
+    dataset_path = 'dataset/sim_warehouse'
+    train_set = SimWarehouse(root=dataset_path, train=True, augmentation=True)
+    test_set = SimWarehouse(root=dataset_path, train=False)
+    batch_size = 16
+    
 train_loader = torch.utils.data.DataLoader(
     dataset=train_set,
     batch_size=batch_size,
@@ -263,7 +268,8 @@ for index in range(total_epoch):
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
-    wandb.log({'metrc':metrc, 'epoch': index})
+    wandb.log({'metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
+    #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
     if opt.weight == 'autol':
         meta_weight_ls[index] = autol.meta_weights.detach().cpu()

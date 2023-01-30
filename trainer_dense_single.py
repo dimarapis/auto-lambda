@@ -6,7 +6,6 @@ from create_dataset import *
 from utils import *
 
 #Mine
-from extra.autolambda_code import SimWarehouse
 from tqdm import tqdm
 from omegaconf import OmegaConf
 import wandb
@@ -30,11 +29,13 @@ parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
 
 
 opt = parser.parse_args()
-
+option_dict = vars(opt)
+print(option_dict)
 #Initialize weights and biases logger
 if opt.wandbtlogger:
     print("Started logging in wandb")
-    wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
+    #wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
+    wandb_config = option_dict
     wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
         name='{}_{}'.format(opt.dataset,opt.task),
         config = wandb_config)
@@ -65,13 +66,6 @@ optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=1e-4, momentum=0.
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 
 # define dataset
-if opt.dataset == 'mini_nyuv2':
-    dataset_path = 'dataset/mini_nyuv2'
-    train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
-    test_set = NYUv2(root=dataset_path, train=False)
-    batch_size = 4
-
-# define dataset
 if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
@@ -84,11 +78,11 @@ elif opt.dataset == 'cityscapes':
     test_set = CityScapes(root=dataset_path, train=False)
     batch_size = 4
 
-elif opt.dataset == 'warehouse_sim':
+elif opt.dataset == 'sim_warehouse':
     dataset_path = 'dataset/sim_warehouse'
     train_set = SimWarehouse(root=dataset_path, train=True, augmentation=True)
     test_set = SimWarehouse(root=dataset_path, train=False)
-    batch_size = 4
+    batch_size = 16
 
 train_loader = torch.utils.data.DataLoader(
     dataset=train_set,
@@ -147,13 +141,15 @@ for index in range(total_epoch):
 
             test_metric.update_metric(test_pred, test_target, test_loss)
 
-    test_str = test_metric.compute_metric()
+    test_str,metrc = test_metric.compute_metric()
     test_metric.reset()
 
     scheduler.step()
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
+    
+    wandb.log({'metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     task_dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric}
     np.save('logging/stl_{}_{}_{}_{}.npy'.format(opt.network, opt.dataset, opt.task, opt.seed), task_dict)
