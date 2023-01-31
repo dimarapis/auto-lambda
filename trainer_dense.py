@@ -32,7 +32,7 @@ parser.add_argument('--seed', default=0, type=int, help='random seed ID')
 
 
 parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
-parser.add_argument('--wandbprojectname', default='Autolambda', type=str, help='c')
+parser.add_argument('--wandbprojectname', default='taskonomy-autolambda', type=str, help='c')
 parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
 
 
@@ -101,22 +101,22 @@ scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 
 # define dataset
 if opt.dataset == 'nyuv2':
-    dataset_path = 'dataset/nyuv2'
+    dataset_path = 'dataset/mini_nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
     test_set = NYUv2(root=dataset_path, train=False)
     batch_size = 4
 
-elif opt.dataset == 'cityscapes':
-    dataset_path = 'dataset/cityscapes'
-    train_set = CityScapes(root=dataset_path, train=True, augmentation=True)
-    test_set = CityScapes(root=dataset_path, train=False)
-    batch_size = 4
- 
 elif opt.dataset == 'sim_warehouse':
     dataset_path = 'dataset/sim_warehouse'
     train_set = SimWarehouse(root=dataset_path, train=True, augmentation=True)
     test_set = SimWarehouse(root=dataset_path, train=False)
     batch_size = 16
+    
+elif opt.dataset == 'taskonomy':
+    dataset_path = 'dataset/taskonomy'
+    train_set = Taskonomy(root=dataset_path, train=True, augmentation=False)
+    test_set = Taskonomy(root=dataset_path, train=False)
+    batch_size = 8
     
 train_loader = torch.utils.data.DataLoader(
     dataset=train_set,

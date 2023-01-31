@@ -43,24 +43,24 @@ def create_task_flags(task, dataset, with_noise=False):
     Noise prediction is only applied in auxiliary learning.
     """
     nyu_tasks = {'seg': 13, 'depth': 1, 'normal': 3}
-    cityscapes_tasks = {'seg': 19, 'part_seg': 10, 'disp': 1}
     sim_warehouse_tasks = {'seg': 23, 'depth': 3, 'normal': 1}
+    taskonomy_tasks = {'seg': 18, 'depth': 3, 'normal': 1}
 
     tasks = {}
     if task != 'all':
         if dataset == 'nyuv2':
             tasks[task] = nyu_tasks[task]
-        elif dataset == 'cityscapes':
-            tasks[task] = cityscapes_tasks[task]
         elif dataset == 'sim_warehouse':
             tasks[task] = sim_warehouse_tasks[task]
+        elif dataset == 'taskonomy':
+            tasks[task] = taskonomy_tasks[task]
     else:
         if dataset == 'nyuv2':
             tasks = nyu_tasks
-        elif dataset == 'cityscapes':
-            tasks = cityscapes_tasks
         elif dataset == 'sim_warehouse':
             tasks = sim_warehouse_tasks
+        elif dataset == 'taskonomy':
+            tasks = taskonomy_tasks
 
     if with_noise:
         tasks['noise'] = 1
@@ -198,15 +198,10 @@ class TaskMetric:
             # Pre-computed single task learning performance using trainer_dense_single.py
             if self.dataset == 'nyuv2':
                 stl = {'seg': 0.4337, 'depth': 0.5224, 'normal': 22.40}
-            elif self.dataset == 'cityscapes':
-                stl = {'seg': 0.5620, 'part_seg': 0.5274, 'disp': 0.84}
-            elif self.dataset == 'cifar100':
-                stl = {'class_0': 0.6865, 'class_1': 0.8100, 'class_2': 0.8234, 'class_3': 0.8371, 'class_4': 0.8910,
-                       'class_5': 0.8872, 'class_6': 0.8475, 'class_7': 0.8588, 'class_8': 0.8707, 'class_9': 0.9015,
-                       'class_10': 0.8976, 'class_11': 0.8488, 'class_12': 0.9033, 'class_13': 0.8441, 'class_14': 0.5537,
-                       'class_15': 0.7584, 'class_16': 0.7279, 'class_17': 0.7537, 'class_18': 0.9148, 'class_19': 0.9469}
             elif self.dataset == 'sim_warehouse': 
                 stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 26.937}
+            elif self.dataset == 'taskonomy': 
+                stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 26.937}  
                 
             delta_mtl = 0
             for task_id in self.train_tasks:
