@@ -8,5 +8,5 @@ wandb/*
 logging/*
 __pycache__/
 hpc_job.sh
-extra/__pycache__
+extra/__pycache__/*
 requirements.txt

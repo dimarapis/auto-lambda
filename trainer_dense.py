@@ -243,6 +243,7 @@ for index in range(total_epoch):
         train_metric.update_metric(train_pred, train_target, train_loss)
 
     train_str,train_metrc = train_metric.compute_metric()
+    print(f'Train metrc {loss}')
     train_metric.reset()
 
     # evaluating test data
@@ -261,14 +262,13 @@ for index in range(total_epoch):
             test_metric.update_metric(test_pred, test_target, test_loss)
 
     test_str,metrc = test_metric.compute_metric()
-    #print('metrbef', metrc)
     test_metric.reset()
 
     scheduler.step()
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
-    wandb.log({'train_metrc': train_metrc, 'test_metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
+    wandb.log({'train_loss': loss, 'test_metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
