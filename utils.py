@@ -43,8 +43,9 @@ def create_task_flags(task, dataset, with_noise=False):
     Noise prediction is only applied in auxiliary learning.
     """
     nyu_tasks = {'seg': 13, 'depth': 1, 'normal': 3}
-    sim_warehouse_tasks = {'seg': 23, 'depth': 3, 'normal': 1}
-    taskonomy_tasks = {'seg': 18, 'depth': 3, 'normal': 1}
+    #sim_warehouse_tasks = {'seg': 23, 'depth': 3, 'normal': 1}
+    sim_warehouse_tasks = {'seg': 23, 'depth': 1, 'normal': 3}
+    taskonomy_tasks = {'seg': 18, 'depth': 1, 'normal': 3}
 
     tasks = {}
     if task != 'all':

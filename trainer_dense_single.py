@@ -22,6 +22,9 @@ parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, citysca
 parser.add_argument('--task', default='seg', type=str, help='choose task for single task learning')
 parser.add_argument('--seed', default=0, type=int, help='gpu ID')
 
+parser.add_argument('--pretrained', action='store_true', help='If pretrained')
+parser.add_argument('--checkpoint_path', default='', type=str, help='where the checkpoint is located')
+
 parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
 parser.add_argument('--wandbprojectname', default='taskonomy-autolambda', type=str, help='c')
 parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
@@ -32,6 +35,12 @@ opt = parser.parse_args()
 option_dict = vars(opt)
 print(option_dict)
 #Initialize weights and biases logger
+if opt.task == 'all' or opt.task == 'seg':
+    prev_best_test_metrc = -np.inf
+else:
+    prev_best_test_metrc = np.inf
+    
+    #prev_best_test_metrc = test_metrc
 if opt.wandbtlogger:
     print("Started logging in wandb")
     #wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
@@ -141,7 +150,18 @@ for index in range(total_epoch):
 
             test_metric.update_metric(test_pred, test_target, test_loss)
 
-    test_str,metrc = test_metric.compute_metric()
+    test_str,test_metrc = test_metric.compute_metric()
+    if opt.task == 'all' or opt.task == 'seg':
+        if test_metrc >= prev_best_test_metrc:
+            print(test_metrc,prev_best_test_metrc)
+            prev_best_test_metrc = test_metrc
+            torch.save(model.state_dict(),'models/{}_{}.pth'.format(opt.dataset,opt.task))
+    else: 
+        if test_metrc <= prev_best_test_metrc:
+            print(test_metrc,prev_best_test_metrc)
+            prev_best_test_metrc = test_metrc
+            torch.save(model.state_dict(),'models/{}_{}.pth'.format(opt.dataset,opt.task))
+    
     test_metric.reset()
 
     scheduler.step()
@@ -149,7 +169,7 @@ for index in range(total_epoch):
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
     
-    wandb.log({'train_loss': train_loss[0], 'test_metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
+    wandb.log({'train_loss': train_loss[0], 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     task_dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric}
     np.save('logging/stl_{}_{}_{}_{}.npy'.format(opt.network, opt.dataset, opt.task, opt.seed), task_dict)
