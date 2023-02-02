@@ -12,7 +12,6 @@ import torchvision.transforms as transforms
 import torchvision.transforms.functional as transforms_f
 
 from PIL import Image
-from torchvision.datasets import CIFAR100
 
 
 class DataTransform(object):
@@ -245,23 +244,10 @@ class Taskonomy(data.Dataset):
 
         image = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/image/{:d}.npy'.format(index)), -1, 0)).float()
         semantic = torch.from_numpy(np.load(self.data_path + '/label/{:d}.npy'.format(index)).astype(np.int32)).long()
-        depth = torch.from_numpy(np.load(self.data_path + '/depth/{:d}.npy'.format(index))).float()  / 1000.0
+        depth = torch.from_numpy(np.load(self.data_path + '/depth/{:d}.npy'.format(index))).float()  / 512.0
         normal = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/normal/{:d}.npy'.format(index)), -1, 0)).float()
         noise = self.noise[index].float()
-
-        noise = self.noise[index].float()
-        # Reshape the data, remove 4th channel
-        #image = image[:3, :, :]
-        # Add depth channel
         depth = depth.unsqueeze(0)
-        #semantic_resized = semantic.unsqueeze(0)
-        #print(semantic_resized.shape)
-        #print(semantic.unsqueeze(0).shape)
-        #semantic_resized = transforms.Resize((360,640))(semantic.unsqueeze(0)).squeeze(0)
-        #semantic_resized = #torch.nn.functional.interpolate(semantic, size=(360,640), mode='interpolate', align_corners=True)
-        #print(image.shape, semantic_resized.shape, depth.shape, normal.shape, noise.shape)
-        #print(semantic_resized.max(), semantic_resized.min())
-        
         semantic = transforms.Resize((256,256))(semantic.unsqueeze(0)).squeeze(0)
         depth = transforms.Resize((256,256))(depth)
         normal = transforms.Resize((256,256))(normal)

@@ -30,16 +30,25 @@ parser.add_argument('--task', default='all', type=str, help='primary tasks, use 
 parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, cityscapes')
 parser.add_argument('--seed', default=0, type=int, help='random seed ID')
 
+parser.add_argument('--pretrained', action='store_true', help='If pretrained')
+parser.add_argument('--checkpoint_path', default='', type=str, help='where the checkpoint is located')
+
 
 parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
 parser.add_argument('--wandbprojectname', default='taskonomy-autolambda', type=str, help='c')
 parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
 
-
 opt = parser.parse_args()
 option_dict = vars(opt)
 print(option_dict)
 #Initialize weights and biases logger
+if opt.task == 'all' or opt.task == 'seg':
+    prev_best_test_metrc = -np.inf
+else:
+    prev_best_test_metrc = np.inf
+    
+    #prev_best_test_metrc = test_metrc
+
 if opt.wandbtlogger:
     print("Started logging in wandb")
     #wandb_config = OmegaConf.to_container(option_dict, resolve=True, throw_on_missing=True)
@@ -76,6 +85,9 @@ if opt.network == 'split':
     model = MTLDeepLabv3(train_tasks).to(device)
 elif opt.network == 'mtan':
     model = MTANDeepLabv3(train_tasks).to(device)
+    
+if opt.pretrained == True:
+    model.load_state_dict(torch.load(opt.checkpoint_path))
 
 total_epoch = 200
 
@@ -101,7 +113,7 @@ scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 
 # define dataset
 if opt.dataset == 'nyuv2':
-    dataset_path = 'dataset/mini_nyuv2'
+    dataset_path = 'dataset/nyuv2'
     train_set = NYUv2(root=dataset_path, train=True, augmentation=True)
     test_set = NYUv2(root=dataset_path, train=False)
     batch_size = 4
@@ -243,7 +255,7 @@ for index in range(total_epoch):
         train_metric.update_metric(train_pred, train_target, train_loss)
 
     train_str,train_metrc = train_metric.compute_metric()
-    print(f'Train metrc {loss}')
+    #print(f'Train metrc {loss}')
     train_metric.reset()
 
     # evaluating test data
@@ -261,14 +273,22 @@ for index in range(total_epoch):
 
             test_metric.update_metric(test_pred, test_target, test_loss)
 
-    test_str,metrc = test_metric.compute_metric()
+    test_str,test_metrc = test_metric.compute_metric()
+    #print(metrc)
+    #print(test_metric.get_best_performance(opt.task))
+
+        
+    if test_metrc >= prev_best_test_metrc:
+        print(test_metrc,prev_best_test_metrc)
+        prev_best_test_metrc = test_metrc
+        torch.save(model.state_dict(),'models/{}_{}_{}_{}.pth'.format(opt.dataset,opt.task,opt.weight,opt.grad_method))
     test_metric.reset()
 
     scheduler.step()
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
-    wandb.log({'train_loss': loss, 'test_metrc':metrc, 'best_all': test_metric.get_best_performance(opt.task)})
+    wandb.log({'train_loss': loss, 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
