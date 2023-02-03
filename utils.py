@@ -200,9 +200,9 @@ class TaskMetric:
             if self.dataset == 'nyuv2':
                 stl = {'seg': 0.4337, 'depth': 0.5224, 'normal': 22.40}
             elif self.dataset == 'sim_warehouse': 
-                stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 26.937}
+                stl = {'seg': 0.2193, 'depth': 0.2184, 'normal': 26.937}
             elif self.dataset == 'taskonomy': 
-                stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 26.937}  
+                stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 34.652}  
                 
             delta_mtl = 0
             for task_id in self.train_tasks:
