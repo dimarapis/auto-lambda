@@ -54,7 +54,7 @@ if opt.wandbtlogger:
     #wandb_config = OmegaConf.to_container(option_dict, resolve=True, throw_on_missing=True)
     wandb_config = option_dict
     wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
-        name='{}_{}_{}_{}'.format(opt.dataset,opt.task,opt.weight,opt.network),
+        name='{}_{}_{}_{}_{}'.format(opt.dataset,opt.task,opt.weight,opt.network,opt.grad_method),
         config = wandb_config)
 
 torch.manual_seed(opt.seed)

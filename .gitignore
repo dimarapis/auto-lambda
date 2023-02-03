@@ -4,6 +4,7 @@ __pycache__/*
 panoptic_parts/
 dataset/*
 models/*
+models copy/*
 wandb/*
 logging/*
 __pycache__/
