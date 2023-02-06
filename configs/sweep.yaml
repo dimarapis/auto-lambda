@@ -1,0 +1,13 @@
+method: random
+metric:
+  name: best_all
+  goal: maximize
+parameters:
+  training.batch_size:
+    values: [4,8,16]
+  training.optim_lr:
+    min: 0.001
+    max: 0.2
+  training.optim:
+    values: ["adam", "sgd"]
+  

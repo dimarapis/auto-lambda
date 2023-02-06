@@ -91,7 +91,7 @@ class SimWarehouse(data.Dataset):
     
     def __init__(self, root, train=True, augmentation=False):
         
-        seed = 29
+        seed = 0
         np.random.seed(seed)
         random.seed(seed)
         torch.manual_seed(seed)
@@ -157,7 +157,7 @@ class NYUv2(data.Dataset):
     """
     def __init__(self, root, train=True, augmentation=False):
         
-        seed = 29
+        seed = 0
         np.random.seed(seed)
         random.seed(seed)
         torch.manual_seed(seed)
@@ -215,7 +215,7 @@ class Taskonomy(data.Dataset):
 
     def __init__(self, root, train=True, augmentation=False):
         
-        seed = 29
+        seed = 0
         np.random.seed(seed)
         random.seed(seed)
         torch.manual_seed(seed)

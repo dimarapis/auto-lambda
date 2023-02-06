@@ -10,6 +10,7 @@ from tqdm import tqdm
 from omegaconf import OmegaConf
 import wandb
 import warnings
+import yaml
 warnings.filterwarnings("ignore")
 
 parser = argparse.ArgumentParser(description='Single-task Learning: Dense Prediction Tasks')
