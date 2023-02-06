@@ -185,7 +185,6 @@ for index in range(total_epoch):
     train_dataset = iter(train_loader)
     if opt.weight == 'autol':
         val_dataset = iter(val_loader)
-
     for k in tqdm(range(train_batch)):
         train_data, train_target = next(iter(train_dataset))
         train_data = train_data.to(device)
@@ -211,6 +210,7 @@ for index in range(total_epoch):
 
         if opt.weight in ['equal', 'dwa']:
             train_loss_tmp = [w * train_loss[i] for i, w in enumerate(lambda_weight[index])]
+            weights = lambda_weight[index]
 
         if opt.weight == 'uncert':
             train_loss_tmp = [1 / (2 * torch.exp(w)) * train_loss[i] + w / 2 for i, w in enumerate(logsigma)]
@@ -288,7 +288,6 @@ for index in range(total_epoch):
 
     print('Epoch {:04d} | TRAIN:{} || TEST:{} | Best: {} {:.4f}'
           .format(index, train_str, test_str, opt.task.title(), test_metric.get_best_performance(opt.task)))
-    wandb.log({'train_loss': loss, 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.task)})
 
     #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
@@ -296,21 +295,21 @@ for index in range(total_epoch):
         meta_weight_ls[index] = autol.meta_weights.detach().cpu()
         dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric,
                 'weight': meta_weight_ls}
-
-        print(get_weight_str(meta_weight_ls[index], train_tasks))
+        weight_str, weight_list = get_weight_str(meta_weight_ls[index], train_tasks)
 
     if opt.weight in ['dwa', 'equal']:
         dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric,
                 'weight': lambda_weight}
-
-        print(get_weight_str(lambda_weight[index], train_tasks))
-
+        weight_str, weight_list = get_weight_str(lambda_weight[index], train_tasks)
+        
     if opt.weight == 'uncert':
         logsigma_ls[index] = logsigma.detach().cpu()
         dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric,
                 'weight': logsigma_ls}
-
-        print(get_weight_str(1 / (2 * np.exp(logsigma_ls[index])), train_tasks))
+        weight_str, weight_list = get_weight_str(1 / (2 * np.exp(logsigma_ls[index])), train_tasks)
+        
+    print(weight_str)
+    wandb.log({'train_loss': loss, 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.task), 'weight_plot': weight_list})
 
     np.save('logging/mtl_dense_{}_{}_{}_{}_{}_{}_.npy'
             .format(opt.network, opt.dataset, opt.task, opt.weight, opt.grad_method, opt.seed), dict)
