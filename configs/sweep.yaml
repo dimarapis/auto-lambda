@@ -11,3 +11,4 @@ parameters:
   training.optim:
     values: ["adam", "sgd"]
   
+#RESULTS, optim_lr 0.16, batch 8, optim sgd

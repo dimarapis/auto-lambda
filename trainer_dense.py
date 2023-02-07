@@ -34,6 +34,7 @@ def training(opt):
         wandb.init(project=opt.wandb.project_name,entity=opt.wandb.entity,
             name='{}_{}_{}_{}_{}'.format(opt.data.dataset,opt.network.task,opt.network.weight,opt.network.archit,opt.network.grad_method),
             config = wandb_config)
+
     elif opt.sweep.sweep_t:
         print("Started logging in wandb")
         wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
@@ -74,14 +75,17 @@ def training(opt):
     elif opt.network.archit == 'mtan':
         model = MTANDeepLabv3(train_tasks).to(device)
         
+    
     if opt.training.pretrained == True:
         model.load_state_dict(torch.load(opt.training.checkpoint_path))
 
     total_epoch = opt.training.epochs
-
+    if opt.wandb.t_logger:
+        wandb.watch(model, log_freq=100, log_graph=True)
+        
     # choose task weighting here
     if opt.network.weight == 'uncert':
-        logsigma = torch.tensor([-0.7] * len(train_tasks), requires_grad=True, device=device)
+        logsigma = torch.tensor([-0.5] * len(train_tasks), requires_grad=True, device=device)
         params = list(model.parameters()) + [logsigma]
         logsigma_ls = np.zeros([total_epoch, len(train_tasks)], dtype=np.float32)
 
@@ -160,7 +164,6 @@ def training(opt):
     train_metric = TaskMetric(train_tasks, pri_tasks, opt.training.batch_size, total_epoch, opt.data.dataset)
     test_metric = TaskMetric(train_tasks, pri_tasks, opt.training.batch_size, total_epoch, opt.data.dataset, include_mtl=True)
     for index in range(total_epoch):
-
         # apply Dynamic Weight Average
         if opt.network.weight == 'dwa':
             if index == 0 or index == 1:
@@ -179,6 +182,7 @@ def training(opt):
             val_dataset = iter(val_loader)
 
         for k in tqdm(range(train_batch)):
+   
             train_data, train_target = next(iter(train_dataset))
             train_data = train_data.to(device)
             train_target = {task_id: train_target[task_id].to(device) for task_id in train_tasks.keys()}
@@ -199,17 +203,38 @@ def training(opt):
             train_pred = model(train_data)
             train_loss = [compute_loss(train_pred[i], train_target[task_id], task_id) for i, task_id in enumerate(train_tasks)]
 
-            train_loss_tmp = [0] * len(train_tasks)
+            #train_loss_tmp = [0] * len(train_tasks)
+            wandb_loss,wandb_weights,weight_list,train_loss_tmp =  {},{},[],[]
 
+            #print(f'dict of wandb_loss_prev {wandb_loss}')    
             if opt.network.weight in ['equal', 'dwa']:
-                train_loss_tmp = [w * train_loss[i] for i, w in enumerate(lambda_weight[index])]
+                for i, w in enumerate(lambda_weight[index]):
+                    if i == 20:
+                        train_loss_tmp.append(w * train_loss[i] / 100) 
+                    else:
+                        train_loss_tmp.append(w * train_loss[i]) 
+
+                    weight_list.append(w)
 
             if opt.network.weight == 'uncert':
-                train_loss_tmp = [1 / (2 * torch.exp(w)) * train_loss[i] + w / 2 for i, w in enumerate(logsigma)]
+                for i, w in enumerate(logsigma):
+                    if i == 20:
+                        train_loss_tmp.append((1 / (2 * torch.exp(w)) * train_loss[i] + w / 2) /  100)
+                    else:
+                        train_loss_tmp.append(1 / (2 * torch.exp(w)) * train_loss[i] + w / 2) 
+                    weight_list.append(w)
 
             if opt.network.weight == 'autol':
-                train_loss_tmp = [w * train_loss[i] for i, w in enumerate(autol.meta_weights)]
+                for i, w in enumerate(autol.meta_weights):
+                    train_loss_tmp.append(w * train_loss[i])
+                    weight_list.append(w)
 
+            wandb_loss = {}
+            for i, task_id in enumerate(train_tasks):
+                wandb_loss[task_id] = {'bef': train_loss[i].item() ,'aft':train_loss_tmp[i].item()}
+
+                wandb_weights[task_id] = weight_list[i].item()
+                                
             loss = sum(train_loss_tmp)
 
             if opt.network.grad_method == 'none':
@@ -245,11 +270,11 @@ def training(opt):
                 optimizer.step()
 
             train_metric.update_metric(train_pred, train_target, train_loss)
-
+            
         train_str,train_metrc = train_metric.compute_metric()
-        #print(f'Train metrc {loss}')
         train_metric.reset()
 
+        
         # evaluating test data
         model.eval()
         with torch.no_grad():
@@ -282,8 +307,10 @@ def training(opt):
             .format(index, train_str, test_str, opt.network.task.title(), test_metric.get_best_performance(opt.network.task)))
         
         if opt.wandb.t_logger:
-            wandb.log({'train_loss': loss, 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.network.task)})
-
+            print(wandb_loss)
+            wandb.log({'train_loss': loss, 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.network.task),
+                'weights' : wandb_weights, 'task_loss': wandb_loss}, step=index)#, 'weighted_loss' : wandb_loss_after})
+            
         #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
         if opt.network.weight == 'autol':
@@ -308,7 +335,8 @@ def training(opt):
 
         np.save('logging/mtl_dense_{}_{}_{}_{}_{}_{}_.npy'
                 .format(opt.network.archit, opt.data.dataset, opt.network.task, opt.network.weight, opt.network.grad_method, opt.reprod.o_seed), dict)
-        
+
+
 if __name__ == "__main__":
 
     opt = OmegaConf.load('configs/trainer.yaml')
