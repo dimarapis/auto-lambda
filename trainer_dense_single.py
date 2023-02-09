@@ -3,9 +3,11 @@ import torch.optim as optim
 import torch.utils.data.sampler as sampler
 from create_network import *
 from create_dataset import *
+
 from utils import *
 
 #Mine
+from networks.ddrnet import DualResNetSingle,DualResNetMTL,BasicBlock
 from tqdm import tqdm
 from omegaconf import OmegaConf
 import wandb
@@ -19,15 +21,15 @@ parser.add_argument('--port', default='none', type=str)
 
 parser.add_argument('--gpu', default=0, type=int, help='gpu ID')
 parser.add_argument('--network', default='split', type=str, help='split, mtan')
-parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, cityscapes')
-parser.add_argument('--task', default='seg', type=str, help='choose task for single task learning')
+parser.add_argument('--dataset', default='sim_warehouse', type=str, help='nyuv2, cityscapes')
+parser.add_argument('--task', default='depth', type=str, help='choose task for single task learning')
 parser.add_argument('--seed', default=0, type=int, help='gpu ID')
 
 parser.add_argument('--pretrained', action='store_true', help='If pretrained')
 parser.add_argument('--checkpoint_path', default='', type=str, help='where the checkpoint is located')
 
-parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
-parser.add_argument('--wandbprojectname', default='taskonomy-autolambda', type=str, help='c')
+parser.add_argument('--wandbtlogger', default=False, type=bool,help ='use wandb or not')
+parser.add_argument('--wandbprojectname', default='mtl-WarehouseSIM', type=str, help='c')
 parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
 
 
@@ -69,10 +71,13 @@ if opt.network == 'split':
     model = MTLDeepLabv3(train_tasks).to(device)
 elif opt.network == 'mtan':
     model = MTANDeepLabv3(train_tasks).to(device)
+elif opt.network == 'ddrnetsingle':
+    model = DualResNetSingle(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
 
 
-total_epoch = 200
-optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=1e-4, momentum=0.9)
+
+total_epoch = 100
+optimizer = optim.SGD(model.parameters(), lr=0.16, weight_decay=1e-4, momentum=0.9)
 scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 
 # define dataset
@@ -86,7 +91,7 @@ elif opt.dataset == 'sim_warehouse':
     dataset_path = 'dataset/sim_warehouse'
     train_set = SimWarehouse(root=dataset_path, train=True, augmentation=True)
     test_set = SimWarehouse(root=dataset_path, train=False)
-    batch_size = 16
+    batch_size = 8
     
 elif opt.dataset == 'taskonomy':
     dataset_path = 'dataset/taskonomy'
