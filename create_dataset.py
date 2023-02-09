@@ -118,9 +118,11 @@ class SimWarehouse(data.Dataset):
         # load data from the pre-processed npy files
         image = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/image/{:d}.npy'.format(index)), -1, 0)).float()
         semantic = torch.from_numpy(np.load(self.data_path + '/label/{:d}.npy'.format(index)).astype(np.int32)).long()
-        depth = torch.from_numpy(np.load(self.data_path + '/depth/{:d}.npy'.format(index))).float()  / 1000.0
-        normal = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/normal/{:d}.npy'.format(index)), -1, 0)).float()
+        depth = torch.from_numpy(np.load(self.data_path + '/depth/{:d}.npy'.format(index))).float()  / 1000.
+        normal = torch.from_numpy(np.moveaxis(np.load(self.data_path + '/normal/{:d}.npy'.format(index)), -1, 0)).float() /255.
         noise = self.noise[index].float()
+        #Enormal = transforms.Resize((256,256))(normal)
+
         # Reshape the data, remove 4th channel
         image = image[:3, :, :]
         # Add depth channel
@@ -128,13 +130,15 @@ class SimWarehouse(data.Dataset):
         #semantic_resized = semantic.unsqueeze(0)
         #print(semantic_resized.shape)
         #print(semantic.unsqueeze(0).shape)
+        #normal = transforms.ToTensor()(normal)
+
         semantic_resized = transforms.Resize((360,640))(semantic.unsqueeze(0)).squeeze(0)
         #semantic_resized = #torch.nn.functional.interpolate(semantic, size=(360,640), mode='interpolate', align_corners=True)
         #print(image.shape, semantic_resized.shape, depth.shape, normal.shape, noise.shape)
-        #print(semantic_resized.max(), semantic_resized.min())
         
-        
+        normal = 2. * normal - 1.
         data_dict = {'im': image, 'seg': semantic_resized, 'depth': depth, 'normal': normal, 'noise': noise}
+        #print(normal.max(), normal.min())
 
         # apply data augmentation if required
         if self.augmentation:
@@ -190,10 +194,12 @@ class NYUv2(data.Dataset):
 
         data_dict = {'im': image, 'seg': semantic, 'depth': depth, 'normal': normal, 'noise': noise}
         #print(image.shape, semantic.shape, depth.shape, normal.shape, noise.shape)
+        print(normal.max(), normal.min())
 
         # apply data augmentation if required
         if self.augmentation:
             data_dict = DataTransform(crop_size=[288, 384], scales=[1.0, 1.2, 1.5])(data_dict)
+        data_dict (normal.max(), normal.min())
 
         im = 2. * data_dict.pop('im') - 1.  # normalised to [-1, 1]
         return im, data_dict

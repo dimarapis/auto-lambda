@@ -4,35 +4,35 @@ mtl:
 
 data:
   path: dataset
-  dataset: sim_warehouse
+  dataset: sim_warehouse #nyuv2, taskonomy, sim_warehouse
   with_noise: False #False,True
 
 network:
   archit: split #split,mtan
-  weight: dwa #equal,dwa,uncert,autol
+  weight: uncert #equal,dwa,uncert,autol
   task: all #primtasks
   grad_method: none #graddrop,pcgrad,cagrad
-  autol_init: 0.1
+  autol_init: 1 #Changed from 0.1
   autol_lr: 0.0001
   
 training:
   gpu: 0
-  optim_lr: 0.16 # From sim_warehouse equal sweep
-  batch_size: 8 # From sim_warehouse equal sweep
+  optim_lr: 0.16 # 0.16 # From sim_warehouse equal sweep
+  batch_size: 8 # 8 # From sim_warehouse equal sweep
   optim: sgd #sgd,adam # From sim-warehouse equal sweep
   weight_decay: 0.0001
   early_stop: False
-  scheduler: multisteplr #multisteplr, cosineannealing, steplr
+  scheduler: cosineannealing #multisteplr, cosineannealing, steplr
   pretrained: False
   checkpoint_path: null
-  epochs: 200
+  epochs: 100 #Changed from 200
 
 reprod:
   t_seed: True
   o_seed: 0
 
 wandb:
-  t_logger: True
+  t_logger: False
   project_name: mtl-WarehouseSIM
   entity: wandbdimar
 

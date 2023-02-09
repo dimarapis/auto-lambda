@@ -86,8 +86,10 @@ def training(opt):
     # choose task weighting here
     if opt.network.weight == 'uncert':
         logsigma = torch.tensor([-0.5] * len(train_tasks), requires_grad=True, device=device)
+        print(logsigma)
         params = list(model.parameters()) + [logsigma]
         logsigma_ls = np.zeros([total_epoch, len(train_tasks)], dtype=np.float32)
+        print(logsigma_ls)
 
     if opt.network.weight in ['dwa', 'equal']:
         T = 2.0  # temperature used in dwa
@@ -226,7 +228,11 @@ def training(opt):
 
             if opt.network.weight == 'autol':
                 for i, w in enumerate(autol.meta_weights):
-                    train_loss_tmp.append(w * train_loss[i])
+                    if i == 20:
+                        train_loss_tmp.append(w * train_loss[i] / 100 )
+
+                    else:
+                        train_loss_tmp.append(w * train_loss[i])
                     weight_list.append(w)
 
             wandb_loss = {}

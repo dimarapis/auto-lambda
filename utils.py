@@ -210,7 +210,7 @@ class TaskMetric:
                     delta_mtl += (self.metric[task_id][e, 1] - stl[task_id]) / stl[task_id]
                 elif task_id in ['depth', 'normal', 'disp']:
                     delta_mtl -= (self.metric[task_id][e, 1] - stl[task_id]) / stl[task_id]
-
+                print(task_id, stl[task_id], self.metric[task_id][e, 1], (self.metric[task_id][e, 1] - stl[task_id]) / stl[task_id])
             self.metric['all'][e] = delta_mtl / len(stl)
             metric_str += ' | All {:.4f}'.format(self.metric['all'][e])
             metric_float = self.metric['all'][e]
