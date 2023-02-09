@@ -89,7 +89,7 @@ def training(opt):
         print(logsigma)
         params = list(model.parameters()) + [logsigma]
         logsigma_ls = np.zeros([total_epoch, len(train_tasks)], dtype=np.float32)
-        print(logsigma_ls)
+        print(logsigma_ls[0:3])
 
     if opt.network.weight in ['dwa', 'equal']:
         T = 2.0  # temperature used in dwa
