@@ -234,7 +234,7 @@ def training(opt):
                     else:
                         train_loss_tmp.append(w * train_loss[i])
                     weight_list.append(w)
-
+            
             wandb_loss = {}
             for i, task_id in enumerate(train_tasks):
                 wandb_loss[task_id] = {'bef': train_loss[i].item() ,'aft':train_loss_tmp[i].item()}
@@ -344,8 +344,10 @@ def training(opt):
 
 
 if __name__ == "__main__":
-
-    opt = OmegaConf.load('configs/trainer.yaml')
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--config', type=str, default='configs/trainer.yaml')
+    
+    opt = OmegaConf.load(parser.parse_args().config)
 
     os.environ['CUDA_LAUNCH_BLOCKING'] = "1"
     

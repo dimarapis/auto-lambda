@@ -11,7 +11,7 @@ network:
   archit: split #split,mtan
   weight: equal #equal,dwa,uncert,autol
   task: all #primtasks
-  grad_method: none #graddrop,pcgrad,cagrad
+  grad_method: graddrop #graddrop,pcgrad,cagrad,none
   autol_init: 1. #Changed from 0.1
   autol_lr: 0.0001
   
@@ -32,7 +32,7 @@ reprod:
   o_seed: 0
 
 wandb:
-  t_logger: False
+  t_logger: True
   project_name: mtl-WarehouseSIM
   entity: wandbdimar
 

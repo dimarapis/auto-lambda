@@ -32,7 +32,7 @@ reprod:
   o_seed: 0
 
 wandb:
-  t_logger: False
+  t_logger: True
   project_name: mtl-WarehouseSIM
   entity: wandbdimar
 
