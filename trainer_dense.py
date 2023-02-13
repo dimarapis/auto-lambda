@@ -76,9 +76,11 @@ def training(opt):
         model = MTLDeepLabv3(train_tasks).to(device)
     elif opt.network.archit == 'mtan':
         model = MTANDeepLabv3(train_tasks).to(device)
-    elif opt.network.archit == 'ddrnet':
+    elif opt.network.archit == 'ddrnet23s':
         model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.data.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
-        
+    
+    model = DualResNet(BasicBlock, [3, 4, 6, 3], num_classes=19, planes=64, spp_planes=128, head_planes=256, augment=False)
+
     
     if opt.training.pretrained == True:
         model.load_state_dict(torch.load(opt.training.checkpoint_path))

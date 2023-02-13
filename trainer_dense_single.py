@@ -78,9 +78,15 @@ elif opt.network == 'mtan':
     #optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
     #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 elif opt.network == 'ddrnetsingle':
-    print('model = ddrnetsingle')
-    print(train_tasks)
-    model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
+    variant = '23s' #23,39
+    if variant == '23s':
+        model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
+    elif variant == '23':
+        model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=64, spp_planes=128, head_planes=128).to(device)
+
+    elif variant == '39':
+        model = DualResNetMTL(BasicBlock, [3, 4, 6, 3], train_tasks, opt.dataset, planes=64, spp_planes=128, head_planes=256, augment=False)
+    opt.network = 'ddrnetsingle_{}'.format(variant)
     optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
     scheduler = optim.lr_scheduler.MultiStepLR(optimizer,milestones=[60,80],gamma=0.1)
 
