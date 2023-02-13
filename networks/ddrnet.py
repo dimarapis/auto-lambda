@@ -262,13 +262,26 @@ class DualResNetMTL(nn.Module):
 
 
         # Define task specific decoders
-        if all(k in tasks for k in ('depth', 'semantic', 'normals')):
+        if all(k in tasks for k in ('depth', 'seg', 'normal')):
             self.pred_task1 = SegmentHead(planes * 4, head_planes, 1)
             self.pred_task2 = SegmentHead(planes * 4, head_planes, seg_head_size)
             self.pred_task3 = SegmentHead(planes * 4, head_planes, 3)
             self.decoders = nn.ModuleList([self.pred_task2, self.pred_task1, self.pred_task3])
         else:
-            raise Exception("Messed up")
+            for k in tasks:
+                if k == 'depth':
+                    self.pred_task1 = SegmentHead(planes * 4, head_planes, 1)
+                    self.decoders = nn.ModuleList([self.pred_task1])
+                elif k == 'seg':
+                    self.pred_task2 = SegmentHead(planes * 4, head_planes, seg_head_size)
+                    self.decoders = nn.ModuleList([self.pred_task2])
+                    
+                elif k == 'normal':
+                    self.pred_task3 = SegmentHead(planes * 4, head_planes, 3)
+                    self.decoders = nn.ModuleList([self.pred_task3])
+
+                else:
+                    raise Exception("Messed up")
     
             
 
@@ -425,13 +438,14 @@ class DualResNetSingle(nn.Module):
         if list(tasks.keys())[0] == 'depth':
             self.pred_task1 = SegmentHead(planes * 4, head_planes, 1)
             self.decoders = nn.ModuleList([self.pred_task1])  
-        elif list(tasks.keys())[0] == 'semantic':
+        elif list(tasks.keys())[0] == 'seg':
             self.pred_task1 = SegmentHead(planes * 4, head_planes, seg_head_size)
             self.decoders = nn.ModuleList([self.pred_task1])  
-        elif list(tasks.keys())[0] == 'normals':
+        elif list(tasks.keys())[0] == 'normal':
             self.pred_task1 = SegmentHead(planes * 4, head_planes, 3)
             self.decoders = nn.ModuleList([self.pred_task1])  
-            
+        else:
+            raise Exception("Messed up")
 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -460,3 +474,57 @@ class DualResNetSingle(nn.Module):
                 layers.append(block(inplanes, planes, stride=1, no_relu=False))
 
         return nn.Sequential(*layers)    
+    
+    def forward(self, x):
+        w, h = x.shape[-1], x.shape[-2]
+        width_output = x.shape[-1] // 8
+        height_output = x.shape[-2] // 8
+        layers = []
+
+        x = self.conv1(x)
+
+        x = self.layer1(x)
+        layers.append(x)
+
+        x = self.layer2(self.relu(x))
+        layers.append(x)
+  
+        x = self.layer3(self.relu(x))
+        layers.append(x)
+        x_ = self.layer3_(self.relu(layers[1]))
+
+        x = x + self.down3(self.relu(x_))
+        x_ = x_ + F.interpolate(
+                        self.compression3(self.relu(layers[2])),
+                        size=[height_output, width_output],
+                        mode='bilinear')
+        if self.augment:
+            temp = x_
+
+        x = self.layer4(self.relu(x))
+        layers.append(x)
+        x_ = self.layer4_(self.relu(x_))
+
+        x = x + self.down4(self.relu(x_))
+        x_ = x_ + F.interpolate(
+                        self.compression4(self.relu(layers[3])),
+                        size=[height_output, width_output],
+                        mode='bilinear')
+
+        x_ = self.layer5_(self.relu(x_))
+        x = F.interpolate(
+                        self.spp(self.layer5(self.relu(x))),
+                        size=[height_output, width_output],
+                        mode='bilinear')
+
+        #x_ = self.final_layer(x + x_)
+
+        x_ = x_ + x
+
+        # Task specific decoders
+        out = [0 for _ in self.tasks]
+        for i, t in enumerate(self.tasks):
+            out[i] = F.interpolate(self.decoders[i](x_), size=[h, w], mode='bilinear', align_corners=True)
+            if t == 'normal':
+                out[i] = out[i] / torch.norm(out[i], p=2, dim=1, keepdim=True)
+        return out

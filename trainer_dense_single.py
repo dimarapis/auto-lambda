@@ -7,7 +7,7 @@ from create_dataset import *
 from utils import *
 
 #Mine
-from networks.ddrnet import DualResNetSingle,DualResNetMTL,BasicBlock
+from networks.ddrnet import DualResNetMTL,BasicBlock
 from tqdm import tqdm
 from omegaconf import OmegaConf
 import wandb
@@ -20,15 +20,15 @@ parser.add_argument('--mode', default='none', type=str)
 parser.add_argument('--port', default='none', type=str)
 
 parser.add_argument('--gpu', default=0, type=int, help='gpu ID')
-parser.add_argument('--network', default='split', type=str, help='split, mtan')
-parser.add_argument('--dataset', default='sim_warehouse', type=str, help='nyuv2, cityscapes')
-parser.add_argument('--task', default='depth', type=str, help='choose task for single task learning')
+parser.add_argument('--network', default='ddrnetsingle', type=str, help='split, mtan')
+parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, cityscapes')
+parser.add_argument('--task', default='seg', type=str, help='choose task for single task learning')
 parser.add_argument('--seed', default=0, type=int, help='gpu ID')
 
 parser.add_argument('--pretrained', action='store_true', help='If pretrained')
 parser.add_argument('--checkpoint_path', default='', type=str, help='where the checkpoint is located')
 
-parser.add_argument('--wandbtlogger', default=False, type=bool,help ='use wandb or not')
+parser.add_argument('--wandbtlogger', default=True, type=bool,help ='use wandb or not')
 parser.add_argument('--wandbprojectname', default='mtl-WarehouseSIM', type=str, help='c')
 parser.add_argument('--wandbentity', default='wandbdimar', type=str, help='c')
 
@@ -49,7 +49,7 @@ if opt.wandbtlogger:
     #wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
     wandb_config = option_dict
     wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
-        name='{}_{}'.format(opt.dataset,opt.task),
+        name='{}_{}'.format(opt.dataset,opt.task,opt.network),
         config = wandb_config)
 
 torch.manual_seed(opt.seed)
@@ -67,19 +67,30 @@ train_tasks = create_task_flags(opt.task, opt.dataset)
 print('Training Task: {} - {} in Single Task Learning Mode with {}'
       .format(opt.dataset.title(), opt.task.title(), opt.network.upper()))
 
+total_epoch = 200
+
 if opt.network == 'split':
     model = MTLDeepLabv3(train_tasks).to(device)
+    #optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
+    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 elif opt.network == 'mtan':
     model = MTANDeepLabv3(train_tasks).to(device)
+    #optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
+    #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 elif opt.network == 'ddrnetsingle':
-    model = DualResNetSingle(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
+    print('model = ddrnetsingle')
+    print(train_tasks)
+    model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
+    optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
+    scheduler = optim.lr_scheduler.MultiStepLR(optimizer,milestones=[60,80],gamma=0.1)
 
 
 
-total_epoch = 100
-optimizer = optim.SGD(model.parameters(), lr=0.16, weight_decay=1e-4, momentum=0.9)
-scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 
+
+
+#optimizer = optim.SGD(model.parameters(), lr=0.01, weight_decay=5e-4, momentum=0.9)
+#scheduler = optim.lr_scheduler.StepLR(optimizer, step_size=100, gamma=0.5) # Just winging this one, 
 # define dataset
 if opt.dataset == 'nyuv2':
     dataset_path = 'dataset/nyuv2'
@@ -119,6 +130,7 @@ train_batch = len(train_loader)
 test_batch = len(test_loader)
 train_metric = TaskMetric(train_tasks, train_tasks, batch_size, total_epoch, opt.dataset)
 test_metric = TaskMetric(train_tasks, train_tasks, batch_size, total_epoch, opt.dataset)
+
 for index in range(total_epoch):
 
     # evaluating train data

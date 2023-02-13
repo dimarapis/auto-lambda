@@ -3,12 +3,12 @@ metric:
   name: best_all
   goal: maximize
 parameters:
-  training.batch_size:
-    values: [4,8,16]
+  #training.batch_size:
+  #  values: [4,8,16]
   training.optim_lr:
     min: 0.001
-    max: 0.2
-  training.optim:
-    values: ["adam", "sgd"]
+    max: 0.1
+  #training.optim:
+  #  values: ["adam", "sgd"]
   
 #RESULTS, optim_lr 0.16, batch 8, optim sgd

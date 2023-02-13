@@ -4,12 +4,12 @@ mtl:
 
 data:
   path: dataset
-  dataset: sim_warehouse #nyuv2, taskonomy, sim_warehouse
+  dataset: nyuv2 #nyuv2, taskonomy, sim_warehouse
   with_noise: False #False,True
 
 network:
-  archit: split #split,mtan
-  weight: uncert #equal,dwa,uncert,autol
+  archit: ddrnet #split,mtan,ddrnet
+  weight: equal #equal,dwa,uncert,autol
   task: all #primtasks
   grad_method: none #graddrop,pcgrad,cagrad
   autol_init: 1. #Changed from 0.1

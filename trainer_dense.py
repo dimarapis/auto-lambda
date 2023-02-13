@@ -14,6 +14,8 @@ from tqdm import tqdm
 import warnings
 import wandb
 import yaml
+from networks.ddrnet import DualResNetMTL,BasicBlock
+
 warnings.filterwarnings("ignore")
 
 def train_sweep():
@@ -74,6 +76,8 @@ def training(opt):
         model = MTLDeepLabv3(train_tasks).to(device)
     elif opt.network.archit == 'mtan':
         model = MTANDeepLabv3(train_tasks).to(device)
+    elif opt.network.archit == 'ddrnet':
+        model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.data.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
         
     
     if opt.training.pretrained == True:
@@ -369,7 +373,7 @@ if __name__ == "__main__":
         )
         sweep_id = wandb.sweep(
             sweep=sweep_config,
-            project="MTL-warehouse-Sweep",
+            project="MTL-nyu-ddr-Sweep",
             entity=opt.wandb.entity,
         )
         wandb.agent(sweep_id, function=train_sweep, count=24)

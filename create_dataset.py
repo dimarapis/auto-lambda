@@ -179,6 +179,7 @@ class NYUv2(data.Dataset):
             self.data_path = root + '/train'
         else:
             self.data_path = root + '/val'
+            
 
         # calculate data length
         self.data_len = len(fnmatch.filter(os.listdir(self.data_path + '/image'), '*.npy'))
@@ -194,12 +195,10 @@ class NYUv2(data.Dataset):
 
         data_dict = {'im': image, 'seg': semantic, 'depth': depth, 'normal': normal, 'noise': noise}
         #print(image.shape, semantic.shape, depth.shape, normal.shape, noise.shape)
-        print(normal.max(), normal.min())
-
+        #print('manas')
         # apply data augmentation if required
         if self.augmentation:
             data_dict = DataTransform(crop_size=[288, 384], scales=[1.0, 1.2, 1.5])(data_dict)
-        data_dict (normal.max(), normal.min())
 
         im = 2. * data_dict.pop('im') - 1.  # normalised to [-1, 1]
         return im, data_dict
