@@ -79,7 +79,7 @@ def training(opt):
     elif opt.network.archit == 'ddrnet23s':
         model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.data.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
     
-    model = DualResNet(BasicBlock, [3, 4, 6, 3], num_classes=19, planes=64, spp_planes=128, head_planes=256, augment=False)
+    #model = DualResNet(BasicBlock, [3, 4, 6, 3], num_classes=19, planes=64, spp_planes=128, head_planes=256, augment=False)
 
     
     if opt.training.pretrained == True:
@@ -169,8 +169,8 @@ def training(opt):
     # Train and evaluate multi-task network
     train_batch = len(train_loader)
     test_batch = len(test_loader)
-    train_metric = TaskMetric(train_tasks, pri_tasks, opt.training.batch_size, total_epoch, opt.data.dataset)
-    test_metric = TaskMetric(train_tasks, pri_tasks, opt.training.batch_size, total_epoch, opt.data.dataset, include_mtl=True)
+    train_metric = TaskMetric(train_tasks, pri_tasks, opt.training.batch_size, total_epoch, opt.data.dataset, opt.network.archit)
+    test_metric = TaskMetric(train_tasks, pri_tasks, opt.training.batch_size, total_epoch, opt.data.dataset, opt.network.archit,include_mtl=True)
     for index in range(total_epoch):
         # apply Dynamic Weight Average
         if opt.network.weight == 'dwa':
@@ -310,7 +310,7 @@ def training(opt):
         if test_metrc >= prev_best_test_metrc:
             print(test_metrc,prev_best_test_metrc)
             prev_best_test_metrc = test_metrc
-            torch.save(model.state_dict(),'models/{}_{}_{}_{}.pth'.format(opt.data.dataset,opt.network.task,opt.network.weight,opt.network.grad_method))
+            torch.save(model.state_dict(),'models/{}_{}_{}_{}_{}.pth'.format(opt.data.dataset,opt.network.archit,opt.network.task,opt.network.weight,opt.network.grad_method))
         test_metric.reset()
 
         scheduler.step()

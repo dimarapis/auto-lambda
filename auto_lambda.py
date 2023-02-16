@@ -26,7 +26,7 @@ class AutoLambda:
         loss = sum([w * train_loss[i] for i, w in enumerate(self.meta_weights)])
 
         # compute gradient
-        gradients = torch.autograd.grad(loss, self.model.parameters())
+        gradients = torch.autograd.grad(loss, self.model.parameters(),allow_unused=True)
 
         # do virtual step (update gradient): theta' = theta - alpha * sum_i lambda_i * L_i(f_theta(x_i), y_i)
         with torch.no_grad():

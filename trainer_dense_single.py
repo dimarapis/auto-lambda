@@ -8,6 +8,7 @@ from utils import *
 
 #Mine
 from networks.ddrnet import DualResNetMTL,BasicBlock
+from networks.guidedepth import GuideDepth
 from tqdm import tqdm
 from omegaconf import OmegaConf
 import wandb
@@ -20,9 +21,9 @@ parser.add_argument('--mode', default='none', type=str)
 parser.add_argument('--port', default='none', type=str)
 
 parser.add_argument('--gpu', default=0, type=int, help='gpu ID')
-parser.add_argument('--network', default='ddrnetsingle', type=str, help='split, mtan')
-parser.add_argument('--dataset', default='nyuv2', type=str, help='nyuv2, cityscapes')
-parser.add_argument('--task', default='seg', type=str, help='choose task for single task learning')
+parser.add_argument('--network', default='none', type=str, help='split, mtan, ddrnetsingle,guidedepth')
+parser.add_argument('--dataset', default='sim_warehouse', type=str, help='nyuv2, cityscapes')
+parser.add_argument('--task', default='none', type=str, help='choose task for single task learning')
 parser.add_argument('--seed', default=0, type=int, help='gpu ID')
 
 parser.add_argument('--pretrained', action='store_true', help='If pretrained')
@@ -44,13 +45,6 @@ else:
     prev_best_test_metrc = np.inf
     
     #prev_best_test_metrc = test_metrc
-if opt.wandbtlogger:
-    print("Started logging in wandb")
-    #wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
-    wandb_config = option_dict
-    wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
-        name='{}_{}'.format(opt.dataset,opt.task,opt.network),
-        config = wandb_config)
 
 torch.manual_seed(opt.seed)
 np.random.seed(opt.seed)
@@ -67,30 +61,48 @@ train_tasks = create_task_flags(opt.task, opt.dataset)
 print('Training Task: {} - {} in Single Task Learning Mode with {}'
       .format(opt.dataset.title(), opt.task.title(), opt.network.upper()))
 
-total_epoch = 200
+total_epoch = 500
 
 if opt.network == 'split':
     model = MTLDeepLabv3(train_tasks).to(device)
+    network = opt.network
+
     #optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
     #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 elif opt.network == 'mtan':
+    network = opt.network
+
     model = MTANDeepLabv3(train_tasks).to(device)
     #optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
     #scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
 elif opt.network == 'ddrnetsingle':
-    variant = '23s' #23,39
+    variant = '23s' #23s,23,39
     if variant == '23s':
         model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
     elif variant == '23':
         model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.dataset, planes=64, spp_planes=128, head_planes=128).to(device)
 
     elif variant == '39':
-        model = DualResNetMTL(BasicBlock, [3, 4, 6, 3], train_tasks, opt.dataset, planes=64, spp_planes=128, head_planes=256, augment=False)
-    opt.network = 'ddrnetsingle_{}'.format(variant)
-    optimizer = optim.SGD(model.parameters(), lr=0.05, weight_decay=1e-4, momentum=0.9)
-    scheduler = optim.lr_scheduler.MultiStepLR(optimizer,milestones=[60,80],gamma=0.1)
+        model = DualResNetMTL(BasicBlock, [3, 4, 6, 3], train_tasks, opt.dataset, planes=64, spp_planes=128, head_planes=256, augment=False).to(device)
+    network = 'ddrnetsingle_{}'.format(variant)
+    optimizer = optim.SGD(model.parameters(), lr=0.1, weight_decay=1e-4, momentum=0.9)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
+    #scheduler = optim.lr_scheduler.MultiStepLR(optimizer,milestones=[60,80],gamma=0.1)
+elif opt.network == 'guidedepth':
+    model = GuideDepth(train_tasks).to(device) 
+    network = opt.network
+    optimizer = optim.Adam(model.parameters(), lr=1e-4)
+    scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, total_epoch)
+    
 
 
+if opt.wandbtlogger:
+    print("Started logging in wandb")
+    #wandb_config = OmegaConf.to_container(opt, resolve=True, throw_on_missing=True)
+    wandb_config = option_dict
+    wandb.init(project=opt.wandbprojectname,entity=opt.wandbentity,
+        name='{}_{}_{}'.format(opt.dataset,opt.task,network),
+        config = wandb_config)
 
 
 

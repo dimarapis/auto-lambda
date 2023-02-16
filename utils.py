@@ -114,11 +114,12 @@ def compute_loss(pred, gt, task_id):
 
 
 class TaskMetric:
-    def __init__(self, train_tasks, pri_tasks, batch_size, epochs, dataset, include_mtl=False):
+    def __init__(self, train_tasks, pri_tasks, batch_size, epochs, dataset, architecture, include_mtl=False):
         self.train_tasks = train_tasks
         self.pri_tasks = pri_tasks
         self.batch_size = batch_size
         self.dataset = dataset
+        self.architecture = architecture
         self.include_mtl = include_mtl
         self.metric = {key: np.zeros([epochs, 2]) for key in train_tasks.keys()}  # record loss & task-specific metric
         self.data_counter = 0
@@ -197,12 +198,19 @@ class TaskMetric:
 
         if self.include_mtl:
             # Pre-computed single task learning performance using trainer_dense_single.py
-            if self.dataset == 'nyuv2':
-                stl = {'seg': 0.4337, 'depth': 0.5224, 'normal': 22.40}
-            elif self.dataset == 'sim_warehouse': 
-                stl = {'seg': 0.2193, 'depth': 0.2184, 'normal': 26.937}
-            elif self.dataset == 'taskonomy': 
-                stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 34.652}  
+            if self.architecture == 'split':
+                
+                if self.dataset == 'nyuv2':
+                    stl = {'seg': 0.4337, 'depth': 0.5224, 'normal': 22.40}
+                elif self.dataset == 'sim_warehouse': 
+                    stl = {'seg': 0.2193, 'depth': 0.2184, 'normal': 26.937}
+                elif self.dataset == 'taskonomy': 
+                    stl = {'seg': 0.2047, 'depth': 0.1854, 'normal': 34.652}  
+            elif self.architecture == 'ddrnet23s':
+                if self.dataset == 'nyuv2':
+                    stl = {'seg': 0.4248, 'depth': 0.5304, 'normal': 22.733}
+                elif self.dataset == 'sim_warehouse': 
+                    stl = {'seg': 0.2406, 'depth': 0.2268, 'normal': 28.117}
                 
             delta_mtl = 0
             for task_id in self.train_tasks:
