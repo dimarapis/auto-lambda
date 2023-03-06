@@ -9,8 +9,8 @@ data:
 
 network:
   archit: split #split,mtan
-  weight: equal #equal,dwa,uncert,autol
-  task: all #primtasks
+  weight: dwa #equal,dwa,uncert,autol
+  task: minimal #primtasks
   grad_method: none #graddrop,pcgrad,cagrad
   autol_init: 1. #Changed from 0.1
   autol_lr: 0.0001

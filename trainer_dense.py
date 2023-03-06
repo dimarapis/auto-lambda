@@ -7,7 +7,8 @@ from auto_lambda import AutoLambda
 from create_network import *
 from create_dataset import *
 from utils import *
-
+from shutil import copyfile
+import glob
 #Mine
 from omegaconf import OmegaConf
 from tqdm import tqdm
@@ -15,6 +16,8 @@ import warnings
 import wandb
 import yaml
 from networks.ddrnet import DualResNetMTL,BasicBlock
+
+import visualizer
 
 warnings.filterwarnings("ignore")
 
@@ -47,6 +50,18 @@ def training(opt):
     else:
         prev_best_test_metrc = np.inf
         
+    from datetime import datetime
+    folder_name = datetime.now().strftime("%Y-%m-%d--%H:%M:%S")
+    os.mkdir(f'results/{folder_name}')
+    results_folder = f'results/{folder_name}/models'
+    images_folder = f'results/{folder_name}/images'
+    config_folder = f'results/{folder_name}/config'
+    os.mkdir(results_folder)
+    os.mkdir(images_folder)
+    os.mkdir(config_folder)
+    
+    copyfile(f'{parser.parse_args().config}',f'{config_folder}/{str(parser.parse_args().config).split("/")[-1]}')
+        
 
     torch.manual_seed(opt.reprod.o_seed)
     np.random.seed(opt.reprod.o_seed)
@@ -59,9 +74,9 @@ def training(opt):
     # define model, optimiser and scheduler
     device = torch.device("cuda:{}".format(opt.training.gpu) if torch.cuda.is_available() else "cpu")
     if opt.data.with_noise:
-        train_tasks = create_task_flags('all', opt.data.dataset, with_noise=True)
+        train_tasks = create_task_flags(opt.network.task, opt.data.dataset, with_noise=True)
     else:
-        train_tasks = create_task_flags('all', opt.data.dataset, with_noise=False)
+        train_tasks = create_task_flags(opt.network.task, opt.data.dataset, with_noise=False)
 
     pri_tasks = create_task_flags(opt.network.task, opt.data.dataset, with_noise=False)
 
@@ -77,13 +92,14 @@ def training(opt):
     elif opt.network.archit == 'mtan':
         model = MTANDeepLabv3(train_tasks).to(device)
     elif opt.network.archit == 'ddrnet23s':
+        print(train_tasks)
         model = DualResNetMTL(BasicBlock, [2, 2, 2, 2], train_tasks, opt.data.dataset, planes=32, spp_planes=128, head_planes=64).to(device)
     
     #model = DualResNet(BasicBlock, [3, 4, 6, 3], num_classes=19, planes=64, spp_planes=128, head_planes=256, augment=False)
 
     
-    if opt.training.pretrained == True:
-        model.load_state_dict(torch.load(opt.training.checkpoint_path))
+    #if opt.training.pretrained == True:
+    #    model.load_state_dict(torch.load(opt.training.checkpoint_path), strict= False)
 
     total_epoch = opt.training.epochs
     if opt.wandb.t_logger:
@@ -100,6 +116,14 @@ def training(opt):
     if opt.network.weight in ['dwa', 'equal']:
         T = 2.0  # temperature used in dwa
         lambda_weight = np.ones([total_epoch, len(train_tasks)])
+        params = model.parameters()
+        
+    if opt.network.weight == 'weighted2v1':
+        # Create a 200x1 numpy array filled with ones
+        ones_array = np.ones((total_epoch, 1))
+        twos_array = np.full((total_epoch, 1), 2)
+        # Stack the two arrays horizontally to create a 200x2 numpy array
+        lambda_weight = np.hstack((ones_array, twos_array))
         params = model.parameters()
 
     if opt.network.weight == 'autol':
@@ -152,7 +176,7 @@ def training(opt):
 
     test_loader = torch.utils.data.DataLoader(
         dataset=test_set,
-        batch_size=opt.training.batch_size,
+        batch_size=1,
         shuffle=False
     )
 
@@ -189,8 +213,7 @@ def training(opt):
         if opt.network.weight == 'autol':
             val_dataset = iter(val_loader)
 
-        for k in tqdm(range(train_batch)):
-   
+        for k in tqdm(range(train_batch)):                
             train_data, train_target = next(iter(train_dataset))
             train_data = train_data.to(device)
             train_target = {task_id: train_target[task_id].to(device) for task_id in train_tasks.keys()}
@@ -215,11 +238,11 @@ def training(opt):
             wandb_loss,wandb_weights,weight_list,train_loss_tmp =  {},{},[],[]
 
             #print(f'dict of wandb_loss_prev {wandb_loss}')    
-            if opt.network.weight in ['equal', 'dwa']:
+            if opt.network.weight in ['equal', 'dwa', 'weighted2v1']:
                 for i, w in enumerate(lambda_weight[index]):
                     if i == 20:
-                        train_loss_tmp.append(w * train_loss[i] / 100) 
-                    else:
+                        train_loss_tmp.append((w * train_loss[i]) / 100) 
+                    else: 
                         train_loss_tmp.append(w * train_loss[i]) 
 
                     weight_list.append(w)
@@ -243,7 +266,7 @@ def training(opt):
             
             wandb_loss = {}
             for i, task_id in enumerate(train_tasks):
-                wandb_loss[task_id] = {'bef': train_loss[i].item() ,'aft':train_loss_tmp[i].item()}
+                #wandb_loss[task_id] = {'bef': train_loss[i].item() ,'aft':train_loss_tmp[i].item()}
 
                 wandb_weights[task_id] = weight_list[i].item()
                                 
@@ -282,11 +305,15 @@ def training(opt):
                 optimizer.step()
 
             train_metric.update_metric(train_pred, train_target, train_loss)
-            
+            pass
         train_str,train_metrc = train_metric.compute_metric()
         train_metric.reset()
 
-        
+        selection_list = [50,59,68,77,150,250] #keep 50,150,250
+        test_pred_list =[]
+        test_data_list = []
+        test_target_list = []
+
         # evaluating test data
         model.eval()
         with torch.no_grad():
@@ -295,22 +322,70 @@ def training(opt):
                 test_data, test_target = next(iter(test_dataset))
                 test_data = test_data.to(device)
                 test_target = {task_id: test_target[task_id].to(device) for task_id in train_tasks.keys()}
-
                 test_pred = model(test_data)
+                if k in selection_list:
+                    test_pred_list.append(test_pred)
+                    test_data_list.append(test_data)
+                    test_target_list.append(test_target)
+                    
                 test_loss = [compute_loss(test_pred[i], test_target[task_id], task_id) for i, task_id in
                             enumerate(train_tasks)]
 
                 test_metric.update_metric(test_pred, test_target, test_loss)
 
-        test_str,test_metrc = test_metric.compute_metric()
-        #print(metrc)
-        #print(test_metric.get_best_performance(opt.task))
+        test_str,metric_dict = test_metric.compute_metric()
+        test_metrc = metric_dict['all']
+        
+
+        
+        if index == 0: 
+            #data_dict = {'im': image, 'seg': semantic, 'depth': depth, 'normal': normal, 'noise': noise}
+            
 
             
+            
+            
+            for i in range(len(test_pred_list)):
+                test_data = test_data_list[i]  
+                test_target = test_target_list[i]
+                im_rgb = Image.fromarray(visualizer.rgb_visualizer(test_data.detach().cpu().squeeze().numpy()))
+                im_rgb.save(f'{images_folder}/rgb_im{selection_list[i]}.png')
+                im_s = visualizer.semantic_colorize(test_target['seg'].detach().cpu().numpy())
+                im_s.save(f'{images_folder}/semantic_im{selection_list[i]}.png')                        
+                im_d = Image.fromarray(visualizer.depth_colorize(test_target['depth'].detach().cpu().squeeze().numpy()))
+                im_d.save(f'{images_folder}/depth_im{selection_list[i]}.png')
+                im_d = Image.fromarray(visualizer.depth_colorize_fixed_ranges(test_target['depth'].detach().cpu().squeeze().numpy(),0,20))
+                im_d.save(f'{images_folder}/depth_fixed_im{selection_list[i]}.png')
+                if 'normal' in train_tasks: 
+                    im_n = Image.fromarray(visualizer.normal_colorize(test_target['normal'].detach().cpu().squeeze().numpy()))
+                    im_n.save(f'{images_folder}/normal_im{selection_list[i]}.png')
+        
+
         if test_metrc >= prev_best_test_metrc:
-            print(test_metrc,prev_best_test_metrc)
+
+            for i in range(len(test_pred_list)):
+                test_pred = test_pred_list[i]      
+                im_s = visualizer.semantic_colorize(test_pred[0].detach().cpu().squeeze().numpy())
+                im_s.save(f'{images_folder}/semantic_im{selection_list[i]}_e{index}.png')                        
+                im_d = Image.fromarray(visualizer.depth_colorize(test_pred[1].detach().cpu().squeeze().numpy()))
+                im_d.save(f'{images_folder}/depth_im{selection_list[i]}_e{index}.png')
+                im_d = Image.fromarray(visualizer.depth_colorize_fixed_ranges(test_pred[1].detach().cpu().squeeze().numpy(),0,20))
+                im_d.save(f'{images_folder}/depth_fixed_im{selection_list[i]}_e{index}.png')
+                
+                if 'normal' in train_tasks:
+                    im_n = Image.fromarray(visualizer.normal_colorize(test_pred[2].detach().cpu().squeeze().numpy()))
+                    im_n.save(f'{images_folder}/normals_im{selection_list[i]}_e{index}.png')
+            
+            #print(test_metrc,prev_best_test_metrc)
             prev_best_test_metrc = test_metrc
-            torch.save(model.state_dict(),'models/{}_{}_{}_{}_{}.pth'.format(opt.data.dataset,opt.network.archit,opt.network.task,opt.network.weight,opt.network.grad_method))
+
+            for file in glob.glob(os.path.join(results_folder,'*')):
+                if os.path.isfile(file):
+                    os.remove(file)
+
+            torch.save(model.state_dict(),'{}/{}_{}_{}_{}_{}_{}.pth'.format(results_folder,opt.data.dataset,
+                                                                            opt.network.archit,opt.network.task,
+                                                                            opt.network.weight,opt.network.grad_method, index))
         test_metric.reset()
 
         scheduler.step()
@@ -321,7 +396,7 @@ def training(opt):
         if opt.wandb.t_logger:
             print(wandb_loss)
             wandb.log({'train_loss': loss, 'test_metrc':test_metrc, 'best_all': test_metric.get_best_performance(opt.network.task),
-                'weights' : wandb_weights, 'task_loss': wandb_loss}, step=index)#, 'weighted_loss' : wandb_loss_after})
+                'weights' : wandb_weights, 'task_loss': wandb_loss, 'task_eval': metric_dict}, step=index)#, 'weighted_loss' : wandb_loss_after})
             
         #print(type(test_metric.get_best_performance(opt.task)),test_metric.get_best_performance(opt.task))
 
@@ -332,7 +407,7 @@ def training(opt):
 
             print(get_weight_str(meta_weight_ls[index], train_tasks))
 
-        if opt.network.weight in ['dwa', 'equal']:
+        if opt.network.weight in ['dwa', 'equal', 'weighted2v1']:
             dict = {'train_loss': train_metric.metric, 'test_loss': test_metric.metric,
                     'weight': lambda_weight}
 

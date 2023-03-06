@@ -1,0 +1,51 @@
+Loaded dependency [numpy/1.21.1-python-3.8.11-openblas-0.3.17]: openblas/0.3.17
+Loaded dependency [python3/3.8.11]: gcc/10.3.0-binutils-2.36.1
+Loaded dependency [numpy/1.21.1-python-3.8.11-openblas-0.3.17]: python3/3.8.11
+Loaded module: numpy/1.21.1-python-3.8.11-openblas-0.3.17
+
+Loading numpy/1.21.1-python-3.8.11-openblas-0.3.17
+  Loading requirement: openblas/0.3.17 gcc/10.3.0-binutils-2.36.1 python3/3.8.11
+Loaded module: cuda/11.4
+JOBID      USER    QUEUE      JOB_NAME   NALLOC STAT  START_TIME      ELAPSED
+15473369   dimara  gpua100    autolambda      1 RUN   Mar  6 12:29    2:17:08
+15473333   dimara  gpua100    autolambda      1 RUN   Mar  6 12:10    2:36:08
+15473570   dimara  gpua100    autolambda      1 RUN   Mar  6 13:14    1:31:56
+15474675   dimara  gpua100    autolambda      1 RUN   Mar  6 14:04    0:41:58
+15475450   dimara  hpc        NONAME          0 PEND       -          0:00:00
+
+------------------------------------------------------------
+Sender: LSF System <lsfadmin@hpc.dtu.dk>
+Subject: Job 15475450: <NONAME> in cluster <dcc> Done
+
+Job <NONAME> was submitted from host <gbarlogin1> by user <dimara> in cluster <dcc> at Mon Mar  6 14:46:35 2023
+Job was executed on host(s) <n-62-31-21>, in queue <hpc>, as user <dimara> in cluster <dcc> at Mon Mar  6 14:46:36 2023
+</zhome/e0/1/158047> was used as the home directory.
+</zhome/e0/1/158047/mdpi_robotics/auto-lambda> was used as the working directory.
+Started at Mon Mar  6 14:46:36 2023
+Terminated at Mon Mar  6 14:46:37 2023
+Results reported at Mon Mar  6 14:46:37 2023
+
+Your job looked like:
+
+------------------------------------------------------------
+# LSBATCH: User input
+bstat
+------------------------------------------------------------
+
+Successfully completed.
+
+Resource usage summary:
+
+    CPU time :                                   0.43 sec.
+    Max Memory :                                 -
+    Average Memory :                             -
+    Total Requested Memory :                     1024.00 MB
+    Delta Memory :                               -
+    Max Swap :                                   -
+    Max Processes :                              -
+    Max Threads :                                -
+    Run time :                                   1 sec.
+    Turnaround time :                            2 sec.
+
+The output (if any) is above this job summary.
+

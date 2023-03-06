@@ -21,10 +21,10 @@ parser.add_argument('--mode', default='none', type=str)
 parser.add_argument('--port', default='none', type=str)
 
 parser.add_argument('--gpu', default=0, type=int, help='gpu ID')
-parser.add_argument('--network', default='none', type=str, help='split, mtan, ddrnetsingle,guidedepth')
+parser.add_argument('--network', default='ddrnetsingle', type=str, help='split, mtan, ddrnetsingle,guidedepth')
 parser.add_argument('--dataset', default='sim_warehouse', type=str, help='nyuv2, cityscapes')
-parser.add_argument('--task', default='none', type=str, help='choose task for single task learning')
-parser.add_argument('--seed', default=0, type=int, help='gpu ID')
+parser.add_argument('--task', default='normal', type=str, help='choose task for single task learning')
+parser.add_argument('--seed', default=29, type=int, help='gpu ID')
 
 parser.add_argument('--pretrained', action='store_true', help='If pretrained')
 parser.add_argument('--checkpoint_path', default='', type=str, help='where the checkpoint is located')
@@ -61,7 +61,7 @@ train_tasks = create_task_flags(opt.task, opt.dataset)
 print('Training Task: {} - {} in Single Task Learning Mode with {}'
       .format(opt.dataset.title(), opt.task.title(), opt.network.upper()))
 
-total_epoch = 500
+total_epoch = 200
 
 if opt.network == 'split':
     model = MTLDeepLabv3(train_tasks).to(device)
@@ -137,7 +137,7 @@ train_loader = torch.utils.data.DataLoader(
 
 test_loader = torch.utils.data.DataLoader(
     dataset=test_set,
-    batch_size=batch_size,
+    batch_size=1,
     shuffle=False,
     num_workers=4
 )
@@ -146,8 +146,8 @@ test_loader = torch.utils.data.DataLoader(
 # Train and evaluate multi-task network
 train_batch = len(train_loader)
 test_batch = len(test_loader)
-train_metric = TaskMetric(train_tasks, train_tasks, batch_size, total_epoch, opt.dataset)
-test_metric = TaskMetric(train_tasks, train_tasks, batch_size, total_epoch, opt.dataset)
+train_metric = TaskMetric(train_tasks, train_tasks, batch_size, total_epoch, opt.dataset, opt.network)
+test_metric = TaskMetric(train_tasks, train_tasks, batch_size, total_epoch, opt.dataset,opt.network)
 
 for index in range(total_epoch):
 
@@ -172,6 +172,12 @@ for index in range(total_epoch):
     train_str,train_metrc = train_metric.compute_metric()
     train_metric.reset()
 
+
+    selection_list = [50,59,68,77,150,250] #keep 50,150,250
+    test_pred_list =[]
+    test_data_list = []
+    test_target_list = []
+
     # evaluating test data
     model.eval()
     with torch.no_grad():
@@ -182,22 +188,76 @@ for index in range(total_epoch):
             test_target = {task_id: test_target[task_id].to(device) for task_id in train_tasks.keys()}
 
             test_pred = model(test_data)
+                
+            if k in selection_list:
+                test_pred_list.append(test_pred)
+                test_data_list.append(test_data)
+                test_target_list.append(test_target)
+                
             test_loss = [compute_loss(test_pred[i], test_target[task_id], task_id) for i, task_id in enumerate(train_tasks)]
 
             test_metric.update_metric(test_pred, test_target, test_loss)
 
     test_str,test_metrc = test_metric.compute_metric()
-    if opt.task == 'all' or opt.task == 'seg':
+    test_metrc = test_metrc[opt.task]
+    
+    
+    if index == 0: 
+        from datetime import datetime
+        print(test_data.shape)
+        import visualizer
+        folder_name = datetime.now().strftime("%Y-%m-%d--%H:%M:%S")
+        
+        
+        os.mkdir(f'results/{folder_name}')
+        os.mkdir(f'results/{folder_name}/models')
+        folder = f'results/{folder_name}/models'
+
+        for i in range(len(test_pred_list)):
+            test_data = test_data_list[i]  
+            test_target = test_target_list[i]    
+            im_rgb = Image.fromarray(visualizer.rgb_visualizer(test_data.detach().cpu().squeeze().numpy()))
+            im_rgb.save(f'results/{folder_name}/rgb_im{selection_list[i]}.png')
+            if opt.task == 'seg':
+                im_s = visualizer.semantic_colorize(test_target['seg'].detach().cpu().numpy())
+                im_s.save(f'results/{folder_name}/semantic_im{selection_list[i]}.png')         
+            elif opt.task == 'depth':
+                im_d = Image.fromarray(visualizer.depth_colorize(test_target['depth'].detach().cpu().squeeze().numpy()))
+                im_d.save(f'results/{folder_name}/depth_im{selection_list[i]}.png')
+            elif opt.task == 'normal':
+                im_n = Image.fromarray(visualizer.normal_colorize(test_target['normal'].detach().cpu().squeeze().numpy()))
+                im_n.save(f'results/{folder_name}/normal_im{selection_list[i]}.png')
+
+    
+
+    if opt.task == 'seg':
         if test_metrc >= prev_best_test_metrc:
-            print(test_metrc,prev_best_test_metrc)
+            for i in range(len(test_pred_list)):
+                test_pred = test_pred_list[i]      
+                
+                im_s = visualizer.semantic_colorize(test_pred[0].detach().cpu().squeeze().numpy())
+                im_s.save(f'results/{folder_name}/semantic_im{selection_list[i]}_e{index}.png')            
+            
             prev_best_test_metrc = test_metrc
-            torch.save(model.state_dict(),'models/{}_{}.pth'.format(opt.dataset,opt.task))
+            torch.save(model.state_dict(),'{}/{}_{}_{}.pth'.format(folder, opt.dataset,opt.task, index))
+        
     else: 
         if test_metrc <= prev_best_test_metrc:
-            print(test_metrc,prev_best_test_metrc)
+            #print(test_metrc,prev_best_test_metrc)
+            for i in range(len(test_pred_list)):
+                test_pred = test_pred_list[i]      
+                
+                if opt.task == 'depth':
+                    im_d = Image.fromarray(visualizer.depth_colorize(test_pred[0].detach().cpu().squeeze().numpy()))
+                    im_d.save(f'results/{folder_name}/depth_im{selection_list[i]}_e{index}.png')
+                elif opt.task == 'normal':
+                    im_n = Image.fromarray(visualizer.normal_colorize(test_pred[0].detach().cpu().squeeze().numpy()))
+                    im_n.save(f'results/{folder_name}/normals_im{selection_list[i]}_e{index}.png')
+
             prev_best_test_metrc = test_metrc
-            torch.save(model.state_dict(),'models/{}_{}.pth'.format(opt.dataset,opt.task))
-    
+            torch.save(model.state_dict(),'{}/{}_{}_{}.pth'.format(str(folder), opt.dataset,opt.task, index))
+            
+                
     test_metric.reset()
 
     scheduler.step()

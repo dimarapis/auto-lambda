@@ -48,20 +48,32 @@ def create_task_flags(task, dataset, with_noise=False):
     taskonomy_tasks = {'seg': 18, 'depth': 1, 'normal': 3}
 
     tasks = {}
-    if task != 'all':
-        if dataset == 'nyuv2':
-            tasks[task] = nyu_tasks[task]
-        elif dataset == 'sim_warehouse':
-            tasks[task] = sim_warehouse_tasks[task]
-        elif dataset == 'taskonomy':
-            tasks[task] = taskonomy_tasks[task]
-    else:
+    if task == 'all':
         if dataset == 'nyuv2':
             tasks = nyu_tasks
         elif dataset == 'sim_warehouse':
             tasks = sim_warehouse_tasks
         elif dataset == 'taskonomy':
             tasks = taskonomy_tasks
+    elif task == 'minimal':
+        #print('task minimal')
+        if dataset == 'nyuv2':
+            del nyu_tasks['normal']
+            tasks = nyu_tasks
+        elif dataset == 'sim_warehouse':
+            del sim_warehouse_tasks['normal']
+            tasks = sim_warehouse_tasks
+            #print(sim_warehouse_tasks)
+        elif dataset == 'taskonomy':
+            del taskonomy_tasks['normal']
+            tasks = taskonomy_tasks
+    else:
+        if dataset == 'nyuv2':
+            tasks[task] = nyu_tasks[task]
+        elif dataset == 'sim_warehouse':
+            tasks[task] = sim_warehouse_tasks[task]
+        elif dataset == 'taskonomy':
+            tasks[task] = taskonomy_tasks[task]
 
     if with_noise:
         tasks['noise'] = 1
@@ -128,6 +140,7 @@ class TaskMetric:
 
         if include_mtl:  # include multi-task performance (relative averaged task improvement)
             self.metric['all'] = np.zeros(epochs)
+            self.metric['minimal'] = np.zeros(epochs)
         for task in self.train_tasks:
             if task in ['seg', 'part_seg']:
                 self.conf_mtx[task] = ConfMatrix(self.train_tasks[task])
@@ -194,7 +207,9 @@ class TaskMetric:
 
             metric_str += ' {} {:.4f} {:.4f}'\
                 .format(task_id.capitalize(), self.metric[task_id][e, 0], self.metric[task_id][e, 1])
-            metric_float = self.metric[task_id][e, 1]
+            #metric_float = self.metric[task_id][e, 1]
+            
+        metric_dict = {task_id : self.metric[task_id][e][1] for task_id in self.train_tasks}
 
         if self.include_mtl:
             # Pre-computed single task learning performance using trainer_dense_single.py
@@ -210,7 +225,7 @@ class TaskMetric:
                 if self.dataset == 'nyuv2':
                     stl = {'seg': 0.4248, 'depth': 0.5304, 'normal': 22.733}
                 elif self.dataset == 'sim_warehouse': 
-                    stl = {'seg': 0.2406, 'depth': 0.2268, 'normal': 28.117}
+                    stl = {'seg': 0.2269, 'depth': 0.1847, 'normal': 12.122}
                 
             delta_mtl = 0
             for task_id in self.train_tasks:
@@ -218,11 +233,19 @@ class TaskMetric:
                     delta_mtl += (self.metric[task_id][e, 1] - stl[task_id]) / stl[task_id]
                 elif task_id in ['depth', 'normal', 'disp']:
                     delta_mtl -= (self.metric[task_id][e, 1] - stl[task_id]) / stl[task_id]
+            
                 print(task_id, stl[task_id], self.metric[task_id][e, 1], (self.metric[task_id][e, 1] - stl[task_id]) / stl[task_id])
             self.metric['all'][e] = delta_mtl / len(stl)
             metric_str += ' | All {:.4f}'.format(self.metric['all'][e])
-            metric_float = self.metric['all'][e]
-        return metric_str,metric_float
+            
+            metric_dict['all'] = self.metric['all'][e]
+            metric_dict['f_tasks'] = (((self.metric['seg'][e, 1] - stl['seg']) / stl['seg']) - 
+                                   ((self.metric['depth'][e, 1] - stl['depth']) / stl['depth'])) /  2
+            print(metric_dict)
+        
+        
+            
+        return metric_str,metric_dict
 
 
     def get_best_performance(self, task):
@@ -233,6 +256,8 @@ class TaskMetric:
             return min(self.metric[task][:e, 1])
         if task in ['all']:  # higher better
             return max(self.metric[task][:e])
+        if task in ['minimal']:  # higher better
+            return max(self.metric['all'][:e])
 
 
 """

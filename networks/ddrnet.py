@@ -267,6 +267,11 @@ class DualResNetMTL(nn.Module):
             self.pred_task2 = SegmentHead(planes * 4, head_planes, seg_head_size)
             self.pred_task3 = SegmentHead(planes * 4, head_planes, 3)
             self.decoders = nn.ModuleList([self.pred_task2, self.pred_task1, self.pred_task3])
+        elif all(k in tasks for k in ('depth', 'seg')):
+            self.pred_task1 = SegmentHead(planes * 4, head_planes, 1)
+            self.pred_task2 = SegmentHead(planes * 4, head_planes, seg_head_size)
+            self.decoders = nn.ModuleList([self.pred_task2, self.pred_task1])
+
         else:
             for k in tasks:
                 if k == 'depth':
@@ -275,7 +280,6 @@ class DualResNetMTL(nn.Module):
                 elif k == 'seg':
                     self.pred_task2 = SegmentHead(planes * 4, head_planes, seg_head_size)
                     self.decoders = nn.ModuleList([self.pred_task2])
-                    
                 elif k == 'normal':
                     self.pred_task3 = SegmentHead(planes * 4, head_planes, 3)
                     self.decoders = nn.ModuleList([self.pred_task3])
@@ -292,7 +296,29 @@ class DualResNetMTL(nn.Module):
                 nn.init.constant_(m.weight, 1)
                 nn.init.constant_(m.bias, 0)
 
-
+    def shared_modules(self):
+        return [self.conv1,
+                self.relu,
+                self.layer1,
+                self.layer2,
+                self.layer3,
+                self.layer4,
+                self.compression3,
+                self.compression4,
+                self.down3,
+                self.down4,
+                self.layer3_,
+                self.layer4_,
+                self.layer5_,
+                self.compression4,
+                self.down3,
+                self.down4,
+                self.spp]
+        
+    def zero_grad_shared_modules(self):
+        for mm in self.shared_modules():
+            mm.zero_grad()
+    
     def _make_layer(self, block, inplanes, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or inplanes != planes * block.expansion:

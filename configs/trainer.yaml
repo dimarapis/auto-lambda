@@ -9,9 +9,9 @@ data:
 
 network:
   archit: ddrnet23s #split,mtan,ddrnet
-  weight: dwa #equal,dwa,uncert,autol
-  task: all #primtasks
-  grad_method: none #graddrop,pcgrad,cagrad
+  weight: dwa #equal,dwa,uncert,autol,weighted2v1
+  task: all #primtasks, all, seg, depth,normal,minimal
+  grad_method: graddrop #graddrop,pcgrad,cagrad
   autol_init: 1. #Changed from 0.1
   autol_lr: 0.0001
   
@@ -24,8 +24,8 @@ training:
   early_stop: False
   scheduler: cosineannealing #multisteplr, cosineannealing, steplr
   pretrained: False
-  checkpoint_path: null
-  epochs: 500 #Changed from 200
+  checkpoint_path: models/DDRNet23s_imagenet.pth
+  epochs: 200 #Changed from 200
 
 reprod:
   t_seed: True

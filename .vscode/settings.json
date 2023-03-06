@@ -1,3 +1,4 @@
 {
-    "terminal.explorerKind": "external"
+    "terminal.explorerKind": "external",
+    "python.analysis.typeCheckingMode": "off"
 }

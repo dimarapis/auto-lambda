@@ -25,7 +25,7 @@ training:
   scheduler: cosineannealing #multisteplr, cosineannealing, steplr
   pretrained: False
   checkpoint_path: null
-  epochs: 100 #Changed from 200
+  epochs: 200 #Changed from 200
 
 reprod:
   t_seed: True
